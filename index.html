@@ -1164,9 +1164,13 @@ async function askClaude(messages,context){
   }
   // No key in this browser: use the site's server function if one is set up
   const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages,context})}).catch(()=>null);
-  const data=r?await r.json().catch(()=>({})):{};
-  if(!r||!r.ok||!data.text)throw new Error('Connect Claude above to start asking questions.');
-  return data.text;
+  if(!r)throw new Error('Couldn’t reach the guide. Check your connection and try again.');
+  if(r.status===404)throw new Error('Connect Claude above to start asking questions.');
+  const data=await r.json().catch(()=>({}));
+  if(r.ok&&data.text)return data.text;
+  if(data.error)throw new Error(data.error);
+  if(r.status===502||r.status===504)throw new Error('That answer took too long. Try asking again, or ask something shorter.');
+  throw new Error(`The guide couldn’t answer (error ${r.status}). Try again in a minute.`);
 }
 </script>
 </body>
