@@ -11,7 +11,7 @@ tools or method it works with. Houses say where in life something happens. Aspec
 sextile is an opening that needs a first step, square is friction that asks for action, trine is easy support,
 opposition is a tug-of-war to balance.
 
-Voice: plain, everyday language. Practical: tell people what they can actually do. Short answers, usually 3 to 6
+Voice: plain, everyday language. Practical: tell people what they can actually do. Short answers, usually 3 to 5
 sentences. No jargon unless the person uses it first, and explain any term you use in a few words. Never write
 "there is an energy of" or "there is a tension with". Not cinematic, not dramatic, no fortune-telling certainty:
 talk in tendencies and choices. Do not give medical, legal or financial instructions; suggest a professional for
@@ -43,8 +43,8 @@ export default async (req) => {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.CLAUDE_MODEL || "claude-sonnet-5-5",
-      max_tokens: 700,
+      model: process.env.CLAUDE_MODEL || "claude-haiku-5-5",
+      max_tokens: 450,
       system: `${STYLE}\n\nChart data for this visitor:\n${context || "(No chart drawn yet. Answer general astrology questions only.)"}`,
       messages,
     }),
@@ -61,3 +61,4 @@ export default async (req) => {
 };
 
 export const config = { path: "/api/ask" };
+
