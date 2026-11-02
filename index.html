@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Where your chart lands — astrocartography, solar returns and timelords</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<style>
+:root{--moon:#ecece7;--panel:#f7f7f3;--butter:#f4e2a1;--butter-deep:#e6cc72;--ink:#3a3d45;--soft:#80838b;--line:#dcdcd4;--focus:#b8901a;--err:#a8483d;color-scheme:light}
+@media (prefers-color-scheme:dark){
+  :root{--moon:#1d1f25;--panel:#25282f;--butter:#e8d48c;--butter-deep:#d9bf62;--ink:#ecebe5;--soft:#9a9ca3;--line:#363a43;--focus:#e8d48c;--err:#e08a7e;color-scheme:dark}
+  .leaflet-tile-pane{filter:grayscale(1) invert(1) brightness(.7) contrast(.9)!important}
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--moon);color:var(--ink);font:400 15px/1.55 Figtree,system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+header{max-width:1240px;margin:0 auto;padding:40px 28px 18px}
+h1{font:300 clamp(2.2rem,5.5vw,3.8rem)/1.02 Newsreader,Georgia,serif;margin:0;letter-spacing:-.015em}
+header p{color:var(--soft);margin:.7rem 0 0;max-width:56ch}
+main{max-width:1240px;margin:0 auto;padding:10px 28px 48px;display:grid;grid-template-columns:300px 1fr;gap:22px}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+h2{font:400 1.2rem/1.2 Newsreader,serif;margin:0 0 10px}
+label{display:block;font-size:.82rem;color:var(--soft);margin:12px 0 4px}
+h2+label{margin-top:0}
+input[type=date],input[type=time],input[type=text],select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--moon);color:var(--ink);font:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.city{position:relative}
+#results{list-style:none;margin:4px 0 0;padding:4px;position:absolute;left:0;right:0;z-index:1000;background:var(--panel);border:1px solid var(--line);border-radius:10px;max-height:240px;overflow:auto;box-shadow:0 8px 24px rgba(40,40,30,.08)}
+#results:empty{display:none}
+#results li{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:.92rem}
+#results li:hover{background:var(--butter)}
+#results small,.soft{color:var(--soft)}
+.note{font-size:.82rem;color:var(--soft);margin-top:6px;min-height:1.2em}
+.btn{margin-top:16px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--butter);color:#3a3d45;font:600 .98rem Figtree,sans-serif;cursor:pointer}
+.btn:hover{background:var(--butter-deep)}
+.step{display:flex;gap:6px;align-items:center}
+.step input{flex:1}
+.step button{flex:none;width:38px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--moon);color:var(--ink);font:500 1rem Figtree;cursor:pointer}
+.step button.today{width:auto;padding:0 10px;font-size:.82rem}
+.toggles{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:.88rem}
+.toggles label,.planets label{display:flex;align-items:center;gap:7px;margin:0;color:var(--ink);cursor:pointer}
+input[type=checkbox]{accent-color:var(--butter-deep);margin:0}
+.planets{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:.9rem}
+.g{display:inline-block;min-width:1.1em;text-align:center;font-family:"Segoe UI Symbol","Apple Symbols","Noto Sans Symbols",serif}
+.key{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:.8rem;color:var(--soft);display:grid;gap:3px}
+.key div{display:flex;align-items:center;gap:8px}
+#map{height:min(68vh,640px);min-height:380px;border-radius:16px;border:1px solid var(--line);background:var(--moon)}
+.leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.72)}
+.leaflet-container{font-family:Figtree,sans-serif}
+.lbl{width:0!important;height:0!important;overflow:visible}
+.tag{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;font:500 11px/1 Figtree,sans-serif;color:var(--c);background:color-mix(in srgb,var(--panel) 88%,transparent);padding:3px 6px;border-radius:999px;letter-spacing:.02em}
+.tag .g{min-width:0;margin-right:3px}
+.tag.p{font-size:10px;font-weight:400;color:var(--soft)}
+.tag.p .g{margin:0 1px 0 0}
+.tag.t{font-style:italic;font-weight:400;border:1px dashed color-mix(in srgb,var(--c) 45%,transparent)}
+.err{color:var(--err);font-size:.84rem;margin-top:8px;min-height:1em}
+.lead{margin:0 0 8px;font-size:.92rem}
+.lord{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-top:1px solid var(--line);font-size:.9rem}
+.lord strong{font-weight:600}
+.lord .soft{grid-column:1/-1;font-size:.8rem}
+.tbl{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:.86rem;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.tbl .soft{text-align:right}
+.reloc{font-size:.86rem;margin-top:8px}
+#cross{list-style:none;margin:10px 0 0;padding:0;max-height:640px;overflow:auto}
+.pass{border-top:1px solid var(--line);padding:14px 0}
+.ph{font-size:.98rem}
+.badge{display:inline-block;background:var(--butter);color:#3a3d45;border-radius:999px;padding:1px 9px;font-size:.74rem;margin-left:6px;vertical-align:1px}
+.what{font-size:.88rem;margin:4px 0 2px}
+.what p{margin:2px 0}
+.ex{font-size:.84rem;color:var(--soft);margin:4px 0 9px}
+.bar{position:relative;height:14px;border-radius:999px;background:color-mix(in srgb,var(--line) 55%,transparent);overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0}
+.bar b{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);transform:translateX(-1px)}
+.bar u{position:absolute;top:0;bottom:0;border-left:2px dotted var(--ink);opacity:.45}
+.axis{display:flex;justify-content:space-between;font-size:.74rem;color:var(--soft);margin-top:4px}
+.rng{display:grid;grid-template-columns:4.6em 1fr;gap:3px 10px;margin:10px 0 0;font-size:.83rem}
+.rng dt{color:var(--soft)}.rng dd{margin:0}
+.bands{display:flex;flex-wrap:wrap;gap:12px;font-size:.78rem;color:var(--soft);margin-top:10px}
+.bands span{display:flex;align-items:center;gap:6px}
+.sw{width:18px;height:10px;border-radius:3px;background:color-mix(in srgb,var(--ink) var(--p),transparent)}
+footer{max-width:1240px;margin:0 auto;padding:0 28px 32px;color:var(--soft);font-size:.78rem;max-width:1240px}
+footer p{max-width:90ch;margin:0 0 6px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.badge{margin-left:0}
+.pass{padding:22px 0}
+.pass+.pass{margin-top:4px}
+.bar{height:16px;margin-top:4px}
+details{margin-top:12px;font-size:.84rem}
+summary{cursor:pointer;color:var(--soft)}
+.stack{margin:8px 0 0;padding-left:1.1em;display:grid;gap:4px;font-size:.86rem}
+.stack li::marker{color:var(--butter-deep)}
+.act{display:grid;grid-template-columns:6.5em 1fr;gap:8px;padding:10px 0;border-top:1px solid var(--line);font-size:.88rem}
+.act .stack{margin:0;font-size:.82rem}
+#cities{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:14px}
+.citycard{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--moon)}
+.ctop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.cname{font:400 1.3rem/1.2 Newsreader,serif}
+.when{font-size:.86rem;margin-top:2px}
+.mini{flex:none;border:0;border-radius:999px;background:var(--butter);color:#3a3d45;font:500 .78rem Figtree;padding:6px 12px;cursor:pointer}
+.mini:hover{background:var(--butter-deep)}
+.srb{display:grid;grid-template-columns:7.5em 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:.86rem}
+.srt{color:var(--soft)}
+.cnt{font-size:.76rem;margin-top:2px}
+.story p{margin:0 0 12px;font-size:.92rem;line-height:1.5}
+.story strong{font-weight:600}
+.read{margin:10px 0 0;font-size:.95rem;line-height:1.5}
+.act details{margin-top:4px}
+.what{font-size:.95rem}
+.tiny{font-size:.75rem;color:var(--soft);margin:10px 0 0}
+li.tiny{margin:0}
+.chatrow{display:flex;gap:8px;margin-top:12px}.chatrow input{flex:1}
+#chatLog{display:grid;gap:10px;margin-top:12px;max-height:420px;overflow:auto}
+.msg{padding:10px 14px;border-radius:14px;font-size:.92rem;line-height:1.5;white-space:pre-wrap;max-width:85%}
+.msg.user{justify-self:end;background:var(--butter);color:#3a3d45}
+.msg.assistant{justify-self:start;background:var(--moon);border:1px solid var(--line)}
+.msg.err{color:var(--err)}
+.optrow{display:flex;align-items:center;gap:7px;font-size:.86rem;margin-top:10px;color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Where your chart lands</h1>
+  <p>Your birth chart on a world map, with this year’s timing laid over it.</p>
+</header>
+<main>
+  <div class="col">
+    <section>
+      <form id="f" autocomplete="off">
+        <h2>Birth details</h2>
+        <label for="d">Date</label>
+        <input id="d" type="date" required>
+        <label for="t">Time</label>
+        <input id="t" type="time" required>
+        <label for="c">City or town</label>
+        <div class="city">
+          <input id="c" type="text" placeholder="Start typing, then pick from the list" role="combobox" aria-controls="results" aria-expanded="false">
+          <ul id="results" role="listbox"></ul>
+        </div>
+        <div class="note" id="picked"></div>
+        <button class="btn" type="submit">Draw my map</button>
+        <div class="err" id="err" role="alert"></div>
+      </form>
+    </section>
+    <section>
+      <h2>Date and layers</h2>
+      <label for="td">Transit date</label>
+      <div class="step">
+        <button type="button" id="prev" aria-label="Previous day">‹</button>
+        <input id="td" type="date">
+        <button type="button" id="next" aria-label="Next day">›</button>
+        <button type="button" class="today" id="today">Today</button>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="showN" checked>Natal lines</label>
+        <label><input type="checkbox" id="showT" checked>Transit lines</label>
+        <label><input type="checkbox" id="showP" checked>Parans</label>
+      </div>
+      <label for="pf">Show parans for</label>
+      <select id="pf"><option value="">All planets</option></select>
+    </section>
+    <section id="chartSec" hidden>
+      <h2>Your year</h2>
+      <div id="lords"></div>
+    </section>
+    <section>
+      <h2>Birthday chart</h2>
+      <div id="srBody"><p class="note">Draw your map to see this.</p></div>
+    </section>
+    <section>
+      <h2>Planets running your year</h2>
+      <div id="actBody"><p class="note">Draw your map to see this.</p></div>
+    </section>
+    <section>
+      <h2>Natal chart</h2>
+      <div class="tbl" id="placements" style="margin-top:0;padding-top:0;border-top:0"></div>
+    </section>
+    <section>
+      <h2>Planets</h2>
+      <div class="planets" id="planets"></div>
+      <div class="key">
+        <div><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" stroke-width="2.5"/></svg>ASC — rising</div>
+        <div><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4"/></svg>DSC — setting</div>
+        <div><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" stroke-width="3.5"/></svg>MC — overhead</div>
+        <div><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="8 5"/></svg>IC — underfoot</div>
+        <div><svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1 4"/></svg>Paran (natal only)</div>
+        <div>Fainter lines with italic labels are transits.</div>
+      </div>
+    </section>
+  </div>
+  <div class="col">
+    <div id="map" aria-label="World map with natal and transit planetary lines"></div>
+    <section>
+      <h2>Transits over a place</h2>
+      <div class="note" id="placeNote">Tap anywhere on the map to see what passes over that spot this year.</div>
+      <div id="reloc"></div>
+      <div class="bands"><span><i class="sw" style="--p:14%"></i>within 500 mi</span><span><i class="sw" style="--p:32%"></i>within 250 mi</span><span><i class="sw" style="--p:68%"></i>within 50 mi</span><span><i class="sw" style="--p:100%;width:2px"></i>exact</span></div>
+      <label class="optrow"><input type="checkbox" id="onlyAct" checked>Only show activated planets</label>
+      <ul id="cross"></ul>
+    </section>
+    <section>
+      <h2>Places that would change things this year</h2>
+      <div class="note" id="cityNote">Draw your map to see this.</div>
+      <ul id="cities"></ul>
+    </section>
+    <section>
+      <h2>Ask about your chart</h2>
+      <div class="note">Ask anything about your map, your year or a place. Answers use the chart you’ve drawn.</div>
+      <div id="chatLog" aria-live="polite"></div>
+      <details id="keyBox"><summary>Connect Claude (one-time setup)</summary>
+        <p class="note">Paste a Claude API key from platform.claude.com. It’s saved only in this browser and sent only to Anthropic, never to anyone else. Questions are billed to that key.</p>
+        <div class="chatrow"><input id="keyInput" type="password" placeholder="sk-ant-…" autocomplete="off" aria-label="Claude API key"><button class="mini" type="button" id="keySave">Save</button><button class="mini" type="button" id="keyForget">Remove</button></div>
+        <p class="note" id="keyNote"></p>
+      </details>
+      <form id="chatForm" class="chatrow" autocomplete="off">
+        <input id="chatInput" type="text" placeholder="Why is Lisbon good for me in May?" aria-label="Your question">
+        <button class="mini" type="submit">Ask</button>
+      </form>
+    </section>
+  </div>
+</main>
+<footer><details><summary>How this works</summary>
+  <p>Tropical zodiac and whole sign houses. Planet positions come from Astronomy Engine, a full planetary ephemeris calculated in your browser, accurate to well under an arcminute.</p>
+  <p>Everything on this page runs on solar return years: each year starts at the exact moment the Sun returns to its natal degree, and the solar return chart is cast for your birthplace. Profections advance at each solar return. Decennials follow Vettius Valens: 10-year 9-month major periods starting from the sect light, with sub-periods of each planet’s minor years in months, in zodiacal order from the sect light. Bounds are the Egyptian bounds from Ptolemy’s Tetrabiblos. Decans are the Chaldean faces, matched to the Golden Dawn minor arcana, the system T. Susan Chang and Austin Coppock work with. The profected rising degree, the solar return rising degree and Moon, the lord of the year, and each exact transit are read through their bound and decan. The everyday decan lines are written from the Golden Dawn card titles, not quoted from those authors. Profections lead: the profection lords, and any natal or solar return planet in the profected sign, are the year’s focus, and the condition of the lord of the year in the solar return (house, angularity, retrograde, sect) is read first. Uranus, Neptune and Pluto never count as main testimonies: they only appear as small background notes, their map lines are drawn fainter, and the solar return Moon’s next aspect and planetary returns use the seven traditional planets only. Further testimonies come from decennial lords, the ruler of the solar return rising sign, angular solar return planets, solar return planets aspecting natal planets within 3° (conjunction, sextile, square, trine, opposition), planetary returns to the natal sign, the solar return Moon’s next applying aspect, and the solar return Lot of Fortune (day: ASC + Moon − Sun, night: ASC + Sun − Moon).</p>
+  <p>Transit lines show where each transiting planet sits on an angle of your natal chart relocated to that spot (cyclocartography). When a transit line and one of your natal lines run near the same spot, the transiting planet aspects that natal planet by angle there: same angle is a conjunction, opposite angle is an opposition, the other pairs are squares. Parans are natal only and not used for transits. The Moon is left out of transit timelines because it passes every place each month.</p>
+  </details><p>Place search by Open-Meteo. Map © OpenStreetMap contributors.</p>
+</footer>
+
+<script>
+
+const PLANETS=[['Sun','#b8901a','☉'],['Moon','#8d949c','☽'],['Mercury','#5f8f7e','☿'],['Venus','#b97488','♀'],['Mars','#a6544a','♂'],
+ ['Jupiter','#7364a6','♃'],['Saturn','#82724f','♄'],['Uranus','#4f8e9c','♅'],['Neptune','#5470ab','♆'],['Pluto','#7a4a5e','♇']];
+const INFO=Object.fromEntries(PLANETS.map(([n,c,g])=>[n,{c,g}]));
+const SIGNS=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+const RULER=['Mars','Venus','Mercury','Moon','Sun','Mercury','Venus','Mars','Jupiter','Saturn','Saturn','Jupiter'];
+const VS='\uFE0E', ANGLES=['ASC','DSC','MC','IC'], OPP={ASC:'DSC',DSC:'ASC',MC:'IC',IC:'MC'};
+const WORD={ASC:'rising (ASC)',DSC:'setting (DSC)',MC:'overhead (MC)',IC:'underfoot (IC)'};
+const STYLE={ASC:{weight:2.5},DSC:{weight:2,dashArray:'2 6'},MC:{weight:3.5},IC:{weight:2,dashArray:'10 7'}};
+const LABEL_LAT={n:{MC:62,IC:-52,ASC:16,DSC:-16},t:{MC:47,IC:-37,ASC:31,DSC:-31}};
+const on=Object.fromEntries(PLANETS.map(p=>[p[0],true]));
+const norm=x=>((x+180)%360+360)%360-180, n360=x=>((x%360)+360)%360, rad=Math.PI/180, DAY=864e5;
+const esc=s=>String(s??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const pl=n=>`<span class="g" style="color:${INFO[n].c}">${INFO[n].g}${VS}</span> ${n}`;
+const ord=n=>n+(['th','st','nd','rd'][(n%100>10&&n%100<14)?0:n%10]||'th');
+const zod=l=>{l=n360(l);const s=Math.floor(l/30),x=l-s*30,d=Math.floor(x),m=Math.floor((x-d)*60);return `${d}°${String(m).padStart(2,'0')}′ ${SIGNS[s]}`};
+const fmt=ms=>new Date(ms).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
+
+const map=L.map('map',{minZoom:1,maxBounds:[[-88,-200],[88,200]]}).setView([25,0],2);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:10,noWrap:true,
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+const lineLayer=L.layerGroup().addTo(map), pinLayer=L.layerGroup().addTo(map);
+let natal=null, transit=null, place=null, spot=null;
+
+/* Ephemeris: equatorial (for map lines) and tropical ecliptic longitude of date (for the chart) */
+function positions(date){
+  const t=Astronomy.MakeTime(date), rot=Astronomy.Rotation_EQJ_EQD(t), T=t.tt/36525;
+  const eps=23.4392911-0.0130042*T-1.64e-7*T*T+5.04e-7*T*T*T, e=eps*rad, p={};
+  for(const [n] of PLANETS){
+    const v=Astronomy.RotateVector(rot,Astronomy.GeoVector(Astronomy.Body[n],t,true)), eq=Astronomy.EquatorFromVector(v);
+    p[n]={ra:eq.ra*15,dec:eq.dec,lon:n360(Math.atan2(v.y*Math.cos(e)+v.z*Math.sin(e),v.x)/rad)};
+  }
+  return {gst:Astronomy.SiderealTime(t)*15,eps,p};
+}
+const ascOf=(ramc,lat,eps)=>{const R=ramc*rad,e=eps*rad;return n360(Math.atan2(Math.cos(R),-(Math.sin(R)*Math.cos(e)+Math.tan(lat*rad)*Math.sin(e)))/rad)};
+const mcOf=(ramc,eps)=>{const R=ramc*rad,e=eps*rad;return n360(Math.atan2(Math.sin(R),Math.cos(R)*Math.cos(e))/rad)};
+
+function lonAt(a,ra,dec,gst,lat){
+  if(a==='MC')return norm(ra-gst);
+  if(a==='IC')return norm(ra-gst+180);
+  const x=-Math.tan(lat*rad)*Math.tan(dec*rad);
+  if(Math.abs(x)>1)return null;
+  const h=Math.acos(x)/rad;
+  return norm(a==='ASC'?ra-h-gst:ra+h-gst);
+}
+function segments(a,ra,dec,gst){
+  if(a==='MC'||a==='IC'){const l=lonAt(a,ra,dec,gst,0);return [[[-85,l],[85,l]]]}
+  const segs=[];let cur=[];
+  for(let lat=-84;lat<=84;lat+=0.5){
+    const l=lonAt(a,ra,dec,gst,lat);
+    if(l===null){if(cur.length>1)segs.push(cur);cur=[];continue}
+    if(cur.length&&Math.abs(l-cur[cur.length-1][1])>180){segs.push(cur);cur=[]}
+    cur.push([lat,l]);
+  }
+  if(cur.length>1)segs.push(cur);
+  return segs;
+}
+
+/* Natal parans */
+const latTxt=l=>`${Math.abs(l).toFixed(2)}°${l>=0?'N':'S'}`;
+function h0(lat,dec){const x=-Math.tan(lat*rad)*Math.tan(dec*rad);return Math.abs(x)>1?null:Math.acos(x)/rad}
+function lstOf(ang,P,lat){if(ang==='MC')return P.ra;if(ang==='IC')return P.ra+180;const h=h0(lat,P.dec);return h===null?null:(ang==='ASC'?P.ra-h:P.ra+h)}
+function computeParans(){
+  const out=[], N=PLANETS.map(p=>p[0]);
+  for(let i=0;i<N.length;i++)for(let j=0;j<N.length;j++){
+    if(i===j)continue;
+    const A=natal.p[N[i]], B=natal.p[N[j]];
+    for(const ha of ['ASC','DSC'])for(const mb of ['MC','IC']){
+      const lst=lstOf(mb,B,0), h=ha==='ASC'?n360(A.ra-lst):n360(lst-A.ra);
+      if(h>180||Math.abs(A.dec)<1e-6)continue;
+      const lat=Math.atan(-Math.cos(h*rad)/Math.tan(A.dec*rad))/rad;
+      if(Math.abs(lat)<=80)out.push({a:[N[i],ha],b:[N[j],mb],lat,lon:norm(lst-natal.gst)});
+    }
+    if(j<i)continue;
+    for(const ha of ['ASC','DSC'])for(const hb of ['ASC','DSC']){
+      let prev=null;
+      for(let lat=-80;lat<=80.001;lat+=0.25){
+        const la=lstOf(ha,A,lat), lb=lstOf(hb,B,lat);
+        if(la===null||lb===null){prev=null;continue}
+        const f=norm(la-lb);
+        if(prev&&Math.abs(f-prev.f)<90&&((prev.f<0&&f>=0)||(prev.f>0&&f<=0))){
+          let lo=prev.lat,hi=lat,flo=prev.f;
+          for(let k=0;k<40;k++){const mid=(lo+hi)/2,fm=norm(lstOf(ha,A,mid)-lstOf(hb,B,mid));if((flo<0)===(fm<0)){lo=mid;flo=fm}else hi=mid}
+          const L=(lo+hi)/2;
+          out.push({a:[N[i],ha],b:[N[j],hb],lat:L,lon:norm(lstOf(ha,A,L)-natal.gst)});
+        }
+        prev={lat,f};
+      }
+    }
+  }
+  return out.sort((x,y)=>y.lat-x.lat);
+}
+function drawParans(){
+  const focus=document.getElementById('pf').value;
+  for(const p of natal.parans){
+    const [na,aa]=p.a,[nb,ab]=p.b;
+    if(!on[na]||!on[nb])continue;
+    if(focus&&na!==focus&&nb!==focus)continue;
+    L.polyline([[p.lat,-180],[p.lat,180]],{color:INFO[na].c,weight:1.2,opacity:.55,dashArray:'1 5',bubblingMouseEvents:false})
+      .bindPopup(`<strong>Paran</strong> at ${latTxt(p.lat)}<br>Natal ${na} ${WORD[aa]} while natal ${nb} is ${WORD[ab]}`).addTo(lineLayer);
+    L.marker([p.lat,p.lon],{interactive:false,keyboard:false,icon:L.divIcon({className:'lbl',
+      html:`<span class="tag p"><span class="g" style="color:${INFO[na].c}">${INFO[na].g}${VS}</span>${aa} <span class="g" style="color:${INFO[nb].c}">${INFO[nb].g}${VS}</span>${ab}</span>`})}).addTo(lineLayer);
+  }
+}
+
+/* Map drawing */
+function drawSet(pos,kind){
+  for(const [n,color,g] of PLANETS){
+    if(!on[n])continue;
+    const {ra,dec}=pos.p[n], isT=kind==='t';
+    for(const a of ANGLES){
+      for(const seg of segments(a,ra,dec,natal.gst))
+        L.polyline(seg,{color,opacity:(isT?.45:.9)*(OUTER.has(n)?.55:1),...STYLE[a],weight:STYLE[a].weight-(isT?.8:0),bubblingMouseEvents:false})
+          .bindPopup(`${isT?'Transiting ':'Natal '}<strong>${n}</strong> ${WORD[a]}`).addTo(lineLayer);
+      const lat=LABEL_LAT[kind][a], lon=lonAt(a,ra,dec,natal.gst,lat);
+      if(lon!==null)L.marker([lat,lon],{interactive:false,keyboard:false,icon:L.divIcon({className:'lbl',
+        html:`<span class="tag${isT?' t':''}" style="--c:${color}"><span class="g">${g}${VS}</span>${a}</span>`})}).addTo(lineLayer);
+    }
+  }
+}
+function draw(){
+  lineLayer.clearLayers();
+  if(!natal)return;
+  if(document.getElementById('showP').checked&&natal.parans)drawParans();
+  if(document.getElementById('showN').checked)drawSet(natal,'n');
+  if(document.getElementById('showT').checked&&transit)drawSet(transit,'t');
+}
+
+/* Egyptian bounds (Ptolemy, Tetrabiblos I.20) and Chaldean decans with Golden Dawn cards */
+const BOUNDS=[
+ [['Jupiter',6],['Venus',12],['Mercury',20],['Mars',25],['Saturn',30]],
+ [['Venus',8],['Mercury',14],['Jupiter',22],['Saturn',27],['Mars',30]],
+ [['Mercury',6],['Jupiter',12],['Venus',17],['Mars',24],['Saturn',30]],
+ [['Mars',7],['Venus',13],['Mercury',19],['Jupiter',26],['Saturn',30]],
+ [['Jupiter',6],['Venus',11],['Saturn',18],['Mercury',24],['Mars',30]],
+ [['Mercury',7],['Venus',17],['Jupiter',21],['Mars',28],['Saturn',30]],
+ [['Saturn',6],['Mercury',14],['Jupiter',21],['Venus',28],['Mars',30]],
+ [['Mars',7],['Venus',11],['Mercury',19],['Jupiter',24],['Saturn',30]],
+ [['Jupiter',12],['Venus',17],['Mercury',21],['Saturn',26],['Mars',30]],
+ [['Mercury',7],['Jupiter',14],['Venus',22],['Saturn',26],['Mars',30]],
+ [['Mercury',7],['Venus',13],['Jupiter',20],['Mars',25],['Saturn',30]],
+ [['Venus',12],['Jupiter',16],['Mercury',19],['Mars',28],['Saturn',30]]];
+const boundOf=l=>{l=n360(l);const s=Math.floor(l/30),d=l-s*30;return BOUNDS[s].find(([,e])=>d<e)[0]};
+const CHALDEAN=['Mars','Sun','Venus','Mercury','Moon','Saturn','Jupiter'];
+const decanIdx=l=>Math.floor(n360(l)/10)%36;
+const decanOf=l=>CHALDEAN[decanIdx(l)%7];
+const SUIT=['Wands','Pentacles','Swords','Cups'], NUM=['Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
+const GD_TITLE=['Dominion','Virtue','Completion','Worry','Material Success','Success Unfulfilled','Interference','Cruelty','Ruin',
+ 'Love','Abundance','Luxury','Strife','Victory','Valour','Prudence','Gain','Wealth',
+ 'Peace Restored','Sorrow','Truce','Disappointment','Pleasure','Illusory Success','Swiftness','Great Strength','Oppression',
+ 'Harmonious Change','Material Works','Power','Defeat','Science','Futility','Abandoned Success','Happiness','Satiety'];
+const DECAN_LIFE=['taking charge of something that’s yours','planning ahead and waiting for it to come back','celebrating something finished',
+ 'money worries and adding up costs','fair trades and help going both ways','slow results on something you planted',
+ 'too many options and overthinking','worry that keeps you up at night','a plan that ends so a new one can start',
+ 'a new close friendship','get-togethers and plenty to share','comfort that starts to feel boring',
+ 'competing and practicing against others','a win people can see','standing your ground',
+ 'careful practice until you get good','enjoying what you earned','family money and long-term security',
+ 'a pause and making peace','a hurtful moment to get through','rest and recovery',
+ 'a letdown and getting past it','old friends and simple pleasures','too many choices or too much of a good thing',
+ 'news and things moving fast','pushing through when tired','carrying too much at once',
+ 'juggling money and time','teamwork on a real project','holding on tight to what you have',
+ 'losing an argument or letting one go','moving on and figuring things out','half-finished efforts',
+ 'walking away from what stopped working','getting what you wished for','a full, settled feeling'];
+const cardOf=l=>{const i=decanIdx(l), s=Math.floor(i/3), k=i%3, el=s%4, nth=s%3;return `${NUM[nth*3+k]} of ${SUIT[el]}`};
+const BOUND_HOW={Jupiter:'Someone generous helps.',Venus:'People are easy to deal with.',
+ Mercury:'Talking it through sorts most of it.',Mars:'Things feel rushed and tempers run short.',Saturn:'It takes longer than you want.'};
+const fineTxt=l=>`${boundOf(l)}’s bound, ${decanOf(l)}’s decan, ${cardOf(l)} (${GD_TITLE[decanIdx(l)]})`;
+
+/* Storytelling layer: decan = the storyline, bound = the tools, planet = who's acting, house = where in life */
+const DECANS=[
+ {t:'Building it yourself',s:'You make your own way and do the hard part with your own hands, quick to defend what’s yours.'},
+ {t:'Standing on your own',s:'You learn to rely on yourself and start getting noticed for it, which means you have to keep proving it.'},
+ {t:'Sharing what you built',s:'Things are finally good enough to enjoy and share, though part of you is restless to do more.'},
+ {t:'Planting with doubts',s:'You put the work in before the money shows up, not sure it will pay off.'},
+ {t:'Give and take',s:'Favors, messages and help move both ways, and who you know starts to matter.'},
+ {t:'The waiting game',s:'Results come slowly and you keep tending something that hasn’t paid off yet.'},
+ {t:'Too many options',s:'Plenty of skills and choices, and the risk of overthinking which one to pick.'},
+ {t:'Two things at once',s:'You want two opposite things and have to make room for both.'},
+ {t:'Committing for real',s:'The talking stage ends and a long commitment starts, and it has some weight to it.'},
+ {t:'Getting close',s:'A new closeness where taking care of someone and needing them get mixed together.'},
+ {t:'Your circle',s:'Celebrating with your people and protecting the group, which also decides who’s on the outside.'},
+ {t:'More than enough',s:'Support keeps showing up; the work is noticing it instead of turning it down.'},
+ {t:'Pressure to show up',s:'You want to be seen and feel nervous about it, so you work hard to earn the attention.'},
+ {t:'A visible win',s:'Warmth, charm and a win that other people notice.'},
+ {t:'Holding your ground',s:'Protecting what you made from people who want a piece of it.'},
+ {t:'The little things',s:'Practical skills and small daily tasks that are quietly adding up to a payoff.'},
+ {t:'Getting it right',s:'Working alone on something until it looks effortless, and being hard on yourself along the way.'},
+ {t:'What lasts',s:'Thinking about what you’ll leave behind when time and energy feel limited.'},
+ {t:'Fair is fair',s:'Evening things out and standing up for whoever is getting less.'},
+ {t:'Ties that hold',s:'Commitments that keep you steady and also weigh on you.'},
+ {t:'Learning by doing',s:'Finding your balance from experience more than from advice.'},
+ {t:'Wanting more',s:'A strong want for something, and a letdown when it falls short.'},
+ {t:'All in',s:'Throwing yourself fully into a person or a project and coming out of it different.'},
+ {t:'Looking back',s:'Missing how things were, then the relief that comes once you let it go.'},
+ {t:'Taking aim',s:'Starting something new; news, travel and plans move fast.'},
+ {t:'Running on instinct',s:'Pushing through when you’re tired and trusting your gut.'},
+ {t:'The last mile',s:'Carrying a heavy load to the finish because you know what’s on the other side.'},
+ {t:'Ups and downs',s:'Constant small adjustments between hoping for the best and planning for the worst.'},
+ {t:'Building something big',s:'A long-term goal worked on with other people, one piece at a time.'},
+ {t:'Holding steady',s:'Money in the bank and control over it, plus the urge to hold on too tight.'},
+ {t:'The cost of leaving',s:'Going your own way and paying for it in comfort or belonging.'},
+ {t:'Between places',s:'Figuring things out while you’re between one chapter and the next.'},
+ {t:'Drawing lines',s:'Working out where your limits are with the people you care about.'},
+ {t:'Outgrowing it',s:'Restless with what you have and getting ready to walk away from it.'},
+ {t:'Wishes come in',s:'Plenty arrives: people, help and things you hoped for.'},
+ {t:'The good scene',s:'A happy stretch you know won’t last forever, so you make the most of it.'}];
+/* Bound tools: what the bound lord hands a planet in each sign (in BOUNDS order) */
+const BTOOLS=[
+ ['generosity and confidence, sometimes spending too freely','charm and good looks that get you what you want quickly','quick thinking and changing plans, sometimes scattered','raw speed and nerve, sometimes rash','stubborn, uphill effort that leaves some bruises'],
+ ['comfort and pleasure, sometimes too much of it','practical smarts and careful money sense','generosity, steadiness and a bit of luck','hard labor through a dry spell','bluntness and force'],
+ ['a clear head and words that land','teaching, big-picture ideas and sharing what you know','wit, charm and a light touch','a sharp tongue and a competitive streak','heavy thoughts, slow paperwork and serious talks'],
+ ['strong reactions and mixed-up wants','affection and popularity','sharp money sense and a public role','protection, generosity and being the one in charge','thin resources and emotional tiredness'],
+ ['warmth and leadership, with people backing you','style, charm and a sense of show','pressure and hard work for recognition','cleverness and strategy','boldness and a readiness to defend'],
+ ['organizing and arranging the details well','craft and pleasure, with messy love lives','practical help and good mentors','hard work, irritability and fix-it energy','strictness and being worn out'],
+ ['seriousness and responsibility','deal-making, trading and numbers','making money while living modestly','an eye for beauty and craft','sudden cuts and disputes'],
+ ['irritability and blunt honesty','being liked, with luck in partnership','strategy and sharp words','luck and respect','bleakness and grudges'],
+ ['activity and trying a bit of everything','popularity and winning','learning and saying things well','dryness and discouragement','fire and recklessness'],
+ ['talent and a performer’s cleverness','swings between praise and embarrassment, gain and loss','indulgence and restlessness','severity and slowness','harshness and force'],
+ ['careful money habits and rule-following','unexpected luck and being cared for','quiet luck and a low profile','stress, overwork and conflict','isolation and caution'],
+ ['ease and friendliness, things moving without much effort','learning and winning people over with words','good connections and kindness','daring and bold moves','drain and last-minute hurdles']];
+const boundIdx=l=>{l=n360(l);const s=Math.floor(l/30),d=l-s*30;return BOUNDS[s].findIndex(([,e])=>d<e)};
+const btool=l=>BTOOLS[Math.floor(n360(l)/30)][boundIdx(l)];
+const ROLE={Sun:'how you lead and get seen',Moon:'your body, home and daily needs',Mercury:'your words, skills and deals',Venus:'love, friends and enjoying things',
+ Mars:'your drive and your fights',Jupiter:'growth, luck and the people who help',Saturn:'limits, duty and long work',
+ Uranus:'sudden changes',Neptune:'blur and longing',Pluto:'power and endings'};
+const ANG_WORD={ASC:'your body and how you come across',MC:'your work and public image',DSC:'partners and the people you deal with',IC:'home, family and private life'};
+const deco=l=>DECANS[decanIdx(l)];
+const the=n=>n==='Sun'||n==='Moon'?'the '+n:n;
+const toolsOf=(n,l)=>boundOf(l)===n?`its own tools, ${btool(l)}`:`${boundOf(l)}’s tools, ${btool(l)}`;
+const ttl=l=>`“${deco(l).t}”`;
+/* One planet, told as a short scene: storyline from the decan, tools from the bound */
+const scene=(n,l)=>`${deco(l).s} It works with ${toolsOf(n,l)}.`;
+const SR_POS={angular:'front and center',succedent:'building slowly',cadent:'in the background'};
+
+/* Practical layer: decan = the situation, bound = how to handle it, angle = where to act */
+const DOM={Sun:'your visibility',Moon:'your home life and energy',Mercury:'your thinking and deal-making',Venus:'your love and social life',
+ Mars:'your drive',Jupiter:'your growth',Saturn:'your workload',Uranus:'your plans',Neptune:'your hopes',Pluto:'your control'};
+const DT=[
+ x=>`${x} has to be built by hand. Nobody will hand it to you, so push for it directly.`,
+ x=>`${x} depends on you alone right now, and once people notice, you’ll need to keep it up.`,
+ x=>`${x} has reached a good point. Enjoy and share it before chasing the next thing.`,
+ x=>`${x} is in a planting season. The effort comes before the payoff.`,
+ x=>`${x} runs on give-and-take. Trade help, favors and introductions.`,
+ x=>`${x} is slow to pay off. Keep tending it and don’t judge it too early.`,
+ x=>`${x} has too many options. Pick one or two and let the rest wait.`,
+ x=>`${x} pulls two ways at once. Make room for both instead of choosing too fast.`,
+ x=>`${x} is moving from talk to commitment. Decide what you’re willing to carry long term.`,
+ x=>`${x} gets close and personal. Caring for someone and needing them start to overlap.`,
+ x=>`${x} centers on your inner circle. Invest in your people, and notice who you’re leaving out.`,
+ x=>`${x} has more support available than you’re using. Say yes to what’s offered.`,
+ x=>`${x} is under pressure to show up. Prepare well so the nerves have less room.`,
+ x=>`${x} is ready for a visible win. Put yourself forward.`,
+ x=>`${x} needs defending. Protect what you’ve built and set your terms.`,
+ x=>`${x} improves through small practical steps. Do the boring part well.`,
+ x=>`${x} gets better with solo practice. Polish it, but don’t wait for perfect.`,
+ x=>`${x} is about what lasts. Spend energy on what you’d still want in ten years.`,
+ x=>`${x} needs to be fair. Even out whatever has gotten lopsided.`,
+ x=>`${x} is tied up in commitments. Keep the ones that hold you up and renegotiate the ones that only weigh.`,
+ x=>`${x} is learned by doing. Try it instead of researching it more.`,
+ x=>`${x} comes with a strong want. Name what you’re hungry for, and don’t let one letdown decide it.`,
+ x=>`${x} asks you to go all in on one person or project.`,
+ x=>`${x} is about letting go of how things used to be. Clear out what’s finished.`,
+ x=>`${x} is off to a fast start. Aim first, then move.`,
+ x=>`${x} runs on instinct and stamina. Rest when you can; you’ll need it.`,
+ x=>`${x} is in the last mile. Lighten the load where you can and finish.`,
+ x=>`${x} goes up and down. Small, steady adjustments beat big swings.`,
+ x=>`${x} is a long build with other people. Agree on the plan and do your piece.`,
+ x=>`${x} is about stability. Secure what you have, but don’t grip so tight that nothing can move.`,
+ x=>`${x} means going your own way. Count the cost before you leave something behind.`,
+ x=>`${x} is between chapters. It’s fine not to have it figured out yet.`,
+ x=>`${x} needs clearer limits with people. Say what you will and won’t do.`,
+ x=>`${x} is outgrowing its current setup. Plan the exit instead of staying unhappy.`,
+ x=>`${x} has a lot coming in. Receive it, and share it.`,
+ x=>`${x} is in a good stretch. Enjoy it fully, knowing it’s a season.`];
+const sit=(subject,l)=>cap(DT[decanIdx(l)](subject));
+const BOUND_DO={Jupiter:'ask for help, say yes, and think bigger',Venus:'keep it pleasant: be kind, make it enjoyable, ask nicely',
+ Mercury:'write it down, talk it through and get the details right',Mars:'pick one thing, set a deadline and act fast',
+ Saturn:'slow down, make a schedule and expect it to take longer'};
+const how=l=>`<strong>How:</strong> ${bhow(l)} <span class="soft">(${boundOf(l)}’s bound in ${SIGNS[sg(l)]}.)</span>`;
+const ANG_DO={
+ Sun:{ASC:'step up and be the face of something',MC:'ask for the role or the credit you want at work',DSC:'let a partner or client see what you can do',IC:'take the lead at home or with family'},
+ Moon:{ASC:'look after your sleep and body; your mood shows',MC:'people at work notice how you treat them, so be consistent',DSC:'lean on a partner, and let them lean on you',IC:'settle in: fix up your space, cook, see family'},
+ Mercury:{ASC:'introduce yourself, post, pitch, speak up',MC:'send the pitch, update your portfolio, have the work talk',DSC:'negotiate, sign, or clear up terms with someone',IC:'sort out paperwork, leases and family conversations'},
+ Venus:{ASC:'refresh your look and say yes to invitations',MC:'warm up work relationships; good for creative or client-facing work',DSC:'dates, partnerships and making up',IC:'make your home nicer and host people'},
+ Mars:{ASC:'train, compete or start something bold, and watch your temper',MC:'push hard on one work goal and pick your battles with bosses',DSC:'handle conflict head-on and fairly',IC:'tackle repairs, a move or family tension directly'},
+ Jupiter:{ASC:'say yes to growth: take the class or the trip',MC:'ask for the opportunity; mentors are around',DSC:'let good partners and advisors help you',IC:'make room to grow at home; good for moves and family support'},
+ Saturn:{ASC:'build habits and take your health seriously',MC:'take on the responsibility and commit to a long work plan',DSC:'spell out commitments and contracts clearly',IC:'handle home or family duties and set up structures that last'},
+ Uranus:{ASC:'leave room for surprises',MC:'leave room for surprises',DSC:'leave room for surprises',IC:'leave room for surprises'},
+ Neptune:{ASC:'double-check details',MC:'double-check details',DSC:'double-check details',IC:'double-check details'},
+ Pluto:{ASC:'notice where you’re gripping',MC:'notice where you’re gripping',DSC:'notice where you’re gripping',IC:'notice where you’re gripping'}};
+const yearMove=c=>{const a=c.q==='angular'?'make your moves openly, since this is a visible year for it':c.q==='succedent'?'build steadily, since the results come later in the year':'work behind the scenes, since quiet progress counts';
+  const b=[c.rx?'finish or redo old business before starting something new':'',c.inSect?'':'go slower than you want and get support'].filter(Boolean);
+  return a+(b.length?`, but ${b.join(' and ')}`:'');};
+
+/* Bound-by-bound methods (Egyptian order), written from the Bounds Guidebook's reading of each bound and Valens */
+const BHOW=[
+ ['Lead with generosity and confidence, and back the boldness with a plan so you don’t overspend.','Use charm and make it attractive; ask warmly instead of demanding.','Think on your feet, but write the plan down, because ideas change fast here.','Act directly and fast, then cool off before you say something you’ll regret.','Go slower than you want; expect resistance and pace yourself.'],
+ ['Make it comfortable and enjoyable, and keep an eye on overdoing it.','Run the numbers and stay consistent; slow, steady thinking pays.','Be generous and steady; this is the luckiest stretch of the sign, so say yes.','Accept a stretch of plain, hard work and keep showing up.','Be firm without bulldozing; pick the one thing worth pushing for.'],
+ ['Talk, write, pitch and persuade; your words are the tool.','Teach what you know and keep the big picture in view.','Keep it light and creative: humor, music, craft.','Debate fairly, and put the sharp edge into a deadline or a competition.','Get serious about details and paperwork; fewer words, more weight.'],
+ ['Protect what’s yours without overreacting, and notice when you want two opposite things.','Lead with affection and comfort; people respond to warmth.','Be precise with money and public tasks, and take the visible role.','Take charge generously and look after the people around you.','Save energy and money, and ask for help before you run on empty.'],
+ ['Lead warmly and let people back you; be the host.','Bring style and ease, and make it enjoyable.','Work hard for recognition and don’t expect instant applause.','Be the expert: study it, explain it, use strategy.','Compete and defend boldly, but choose battles worth having.'],
+ ['Organize: lists, systems, the details done right.','Care for it patiently; good for craft, careful with love.','Find a mentor or practical help; steady work brings plenty.','Fix what’s broken and take the hard tasks, without snapping at people.','Finish and close it out; be strict without wearing yourself down.'],
+ ['Take responsibility and keep commitments; fairness through structure.','Negotiate, trade and keep track of the numbers.','Make money and keep it, but don’t let living simply turn stingy.','Lean into beauty, craft and ease; things move without forcing.','Lead decisively and cut what isn’t working, respectfully.'],
+ ['Say it straight and deal with it; frank conversations work here.','Be warm and generous; people are on your side.','Research deeply, plan your moves, and keep your words sharp but fair.','Trust your talent and accept recognition.','Let go of grudges; choose endurance over resentment.'],
+ ['Try a bit of everything and say yes to people and plans.','Be gracious and visible; you’re likely to be liked and to win.','Study, write and put your thinking into words.','Push through discouragement with a simple routine.','Move boldly, but don’t burn bridges in the rush.'],
+ ['Use talent and wit; perform and sell, but stay honest.','Expect swings between praise and setbacks, and stay humble on the good days.','Enjoy yourself, but watch for carelessness and restlessness.','Be patient and methodical; slow but effective.','Use force sparingly; be decisive and steady.'],
+ ['Learn the rules, keep good records and be careful with money.','Stay open to unexpected luck and help from unlikely people.','Work quietly; the luck comes when you don’t need the spotlight.','Watch stress and overwork, and schedule rest.','Work alone when you need to, but don’t cut yourself off.'],
+ ['Go with the flow; be friendly and let things come easily.','Learn and teach; win people over with what you say.','Use your connections and kindness.','Be daring: take the bold option and see it through.','Expect last-minute hurdles and leave buffer time.']];
+const bhow=l=>BHOW[Math.floor(n360(l)/30)][boundIdx(l)];
+/* Houses: what to actually do there (Houses Guidebook) */
+const HOUSE_DO=['','take care of your body, look and routine, and start things yourself','manage income, spending and what you own','write, message, learn, run errands, and show up for siblings and neighbors','work on your home, family and where you live','make time for fun, dating, creative projects and kids','fix daily routines, health habits and how work actually gets done','focus on partners, clients and one-on-one agreements','sort out shared money, debts and what others owe or give you','travel, study, teach or rethink what you believe','work on your career, reputation and public role','invest in friends, groups and future plans','rest, work behind the scenes and deal with what’s been hidden'];
+/* Aspects and planet pairs (Aspects Guidebook: conjunction blends, sextile is Venus-like, square Mars-like, trine Jupiter-like, opposition pulls apart) */
+const ASP_DO={conjunct:'they act as one, so handle both together',conjunction:'they act as one, so handle both together',sextile:'an opening that works if you take the first step',
+ trine:'easy support, so lean on it',square:'friction that pushes you to act, so deal with it directly',opposite:'a tug-of-war, so find the middle instead of picking a side',opposition:'a tug-of-war, so find the middle instead of picking a side'};
+const PAIR={'Moon|Sun':'what you want and what you need','Mercury|Sun':'your goals and how you explain them','Sun|Venus':'ambition and relationships','Mars|Sun':'ambition and drive',
+ 'Jupiter|Sun':'confidence and opportunity','Saturn|Sun':'ambition and responsibility','Mercury|Moon':'feelings and words','Moon|Venus':'comfort and affection','Mars|Moon':'feelings and temper',
+ 'Jupiter|Moon':'needs and generosity','Moon|Saturn':'feelings and duty','Mercury|Venus':'words and charm','Mars|Mercury':'words and arguments','Jupiter|Mercury':'ideas and big plans',
+ 'Mercury|Saturn':'thinking and limits','Mars|Venus':'love and desire','Jupiter|Venus':'pleasure and plenty, so watch the excess','Saturn|Venus':'love and commitment',
+ 'Jupiter|Mars':'drive and purpose','Mars|Saturn':'speed and patience','Jupiter|Saturn':'growth and limits'};
+const pairOf=(a,b)=>a===b?`${ROLE[a]}, doubled`:PAIR[[a,b].sort().join('|')]||`${ROLE[a]} and ${ROLE[b]}`;
+const VERB={conjunct:'joins',conjunction:'joins',sextile:'sextiles',square:'squares',trine:'trines',opposite:'opposes',opposition:'opposes'};
+const contact=(x,asp,z,lead='')=>`${lead}${lead?the(x):cap(the(x))} ${VERB[asp]} your natal ${z}: ${pairOf(x,z)}. It’s ${ASP_DO[asp]}.`;
+
+/* Everyday wording */
+const DO={
+ Sun:['credit for your work','a boss or parent paying attention to you','your name on something','a chance to lead'],
+ Moon:['sleep, meals and routine','the people you live with','changes in sleep and energy','someone who takes care of you'],
+ Mercury:['texts, forms and quick errands','a new skill or a pitch','siblings, classmates and daily chats','a contract or schedule change'],
+ Venus:['friends, dates and going out','spending on clothes and comfort','making up with someone','a gift or a favor'],
+ Mars:['deadlines, workouts and arguments','a fast exit from something','more of the hard part landing on you','repairs and quick fixes'],
+ Jupiter:['offers and introductions','a teacher, mentor or lawyer','a trip or a class','more yeses than you planned'],
+ Saturn:['bills, rules and paperwork','an older person with high standards','slow work that pays off later','a tighter budget'],
+ Uranus:['last-minute changes of plan','new tech or odd hours','a routine that ends overnight'],
+ Neptune:['blurry plans and waiting','art, music and rest','mixed signals'],
+ Pluto:['hard money talks','a goodbye that sticks','a big clear-out']};
+const TOPIC=['','your body, looks and daily routine','your income and what you own','siblings, neighbors and everyday errands','home, parents and where you live','dating, fun and things you make','your daily job, health habits and coworkers','a partner, clients and one-on-one deals','shared money, loans and other people’s stuff','travel, school and what you believe','your career and reputation','friends, groups and plans for later','rest, time alone and things done privately'];
+const SHORT=['','you','money','errands and siblings','home','dating and fun','daily work and health','a partner or clients','shared money','travel and school','career','friends','rest and privacy'];
+const PLACE_LINE={
+ MC:[(t,d)=>`People there notice what you do with ${t}. Mostly through ${d}.`,(t,d)=>`A good place to be seen for ${t}. Expect ${d}.`],
+ ASC:[(t,d)=>`You show up differently there, more focused on ${t}. Expect ${d}.`,(t,d)=>`Being there changes how you handle ${t}. Expect ${d}.`],
+ DSC:[(t,d)=>`Someone you meet there ties into ${t}. Expect ${d}.`,(t,d)=>`The people there bring ${t} to your door. Expect ${d}.`],
+ IC:[(t,d)=>`A place to sort out ${t} in private. Expect ${d}.`,(t,d)=>`It works as a home base for ${t}. Expect ${d} in the background.`]};
+const ANG_SHORT={MC:'Work and reputation',ASC:'How you come across',DSC:'People you meet',IC:'Home life'};
+const hsh=x=>[...String(x)].reduce((a,ch)=>(a*31+ch.charCodeAt(0))>>>0,7);
+const pick=(arr,seed)=>arr[hsh(seed)%arr.length];
+
+/* Helpers */
+const TRAD=['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn'];
+const MINOR={Saturn:30,Jupiter:12,Mars:15,Sun:19,Venus:8,Mercury:20,Moon:25};
+const sg=l=>Math.floor(n360(l)/30);
+const orbTxt=o=>{const d=Math.floor(o),m=Math.floor((o-d)*60);return `${d}°${String(m).padStart(2,'0')}′`};
+const fmtMY=ms=>new Date(ms).toLocaleDateString(undefined,{month:'short',year:'numeric',timeZone:'UTC'});
+const fmtLocal=ms=>new Date(ms).toLocaleString(undefined,{timeZone:natal.tz,dateStyle:'medium',timeStyle:'short'});
+const cap=t=>t[0].toUpperCase()+t.slice(1);
+let yr=null;
+
+/* Solar return (cast for the birthplace) */
+function sunLon(ms){
+  const t=Astronomy.MakeTime(new Date(ms)), rot=Astronomy.Rotation_EQJ_EQD(t), T=t.tt/36525, e=(23.4392911-0.0130042*T)*rad;
+  const v=Astronomy.RotateVector(rot,Astronomy.GeoVector(Astronomy.Body.Sun,t,true));
+  return n360(Math.atan2(v.y*Math.cos(e)+v.z*Math.sin(e),v.x)/rad);
+}
+function solarReturn(year){
+  let ms=Date.UTC(year,natal.birth.m-1,natal.birth.d)+((natal.utcMs%DAY)+DAY)%DAY;
+  for(let k=0;k<8;k++)ms+=norm(natal.p.Sun.lon-sunLon(ms))/0.98565*DAY;
+  return ms;
+}
+
+/* Decennials (Valens): 129-month major periods from the sect light, sub-periods of each planet's minor years in months */
+function addMonths(ms,k){const d=new Date(ms);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+k,d.getUTCDate(),d.getUTCHours(),d.getUTCMinutes())}
+function decennials(from,to){
+  const order=natal.decOrder, out=[];
+  for(let k=0;;k++){
+    const s1=addMonths(natal.utcMs,129*k), e1=addMonths(natal.utcMs,129*(k+1));
+    if(s1>=to)break;
+    if(e1<=from)continue;
+    const l1=order[k%7], i0=order.indexOf(l1);let m=0;
+    for(let j=0;j<7;j++){
+      const l2=order[(i0+j)%7], s=addMonths(natal.utcMs,129*k+m), e=addMonths(natal.utcMs,129*k+m+MINOR[l2]);m+=MINOR[l2];
+      if(e>from&&s<to)out.push({l1,l2,s,e,s1,e1});
+    }
+  }
+  return out;
+}
+
+/* The solar return year: profections first, then decennials and the solar return read through the natal chart */
+const ASP=[[0,'conjunct',2],[60,'sextile',1],[90,'square',1.5],[120,'trine',1],[180,'opposite',1.5]];
+function aspectOf(a,b,orb=3){const d=Math.abs(norm(a-b));for(const [ang,name,w] of ASP){const o=Math.abs(d-ang);if(o<=orb)return {name,o,w}}return null}
+const OUTER=new Set(['Uranus','Neptune','Pluto']);
+const DIURNAL={Sun:true,Jupiter:true,Saturn:true,Moon:false,Venus:false,Mars:false};
+const QUAL=h=>[1,4,7,10].includes(h)?'angular':[2,5,8,11].includes(h)?'succedent':'cadent';
+function moonNext(start){
+  const T=[60,90,120,180,240,270,300,360], NAME={60:'sextile',300:'sextile',90:'square',270:'square',120:'trine',240:'trine',180:'opposition',360:'conjunction'};
+  const m0=positions(new Date(start)).p.Moon.lon;let prev=null;
+  for(let h=0;h<=120;h++){
+    const pos=positions(new Date(start+h*3600e3)), cur={};
+    for(const [n] of PLANETS)if(n!=='Moon'&&!OUTER.has(n))cur[n]=n360(pos.p.Moon.lon-pos.p[n].lon);
+    if(prev)for(const n in cur){const p=prev[n], c=cur[n]<p?cur[n]+360:cur[n];
+      for(const t of T)if(p<t&&c>=t)return {n,name:NAME[t],hours:h,sameSign:sg(pos.p.Moon.lon)===sg(m0)}}
+    prev=cur;
+  }
+  return null;
+}
+function buildYear(ms){
+  let y=new Date(ms).getUTCFullYear(), start=solarReturn(y);
+  if(start>ms){y--;start=solarReturn(y)}
+  if(y<natal.birth.y)return null;
+  if(y===natal.birth.y)start=natal.utcMs;
+  const end=solarReturn(y+1), Y={y,start,end,age:y-natal.birth.y};
+  const sp=positions(new Date(start)), ramc=n360(sp.gst+place.longitude), later=positions(new Date(start+6*3600e3));
+  Y.p=sp.p;Y.asc=ascOf(ramc,place.latitude,sp.eps);Y.mc=mcOf(ramc,sp.eps);
+  for(const [n] of PLANETS)Y.p[n].rx=norm(later.p[n].lon-Y.p[n].lon)<0;
+  {const s=Y.p.Sun,H=(ramc-s.ra)*rad,f=place.latitude*rad;Y.day=Math.sin(f)*Math.sin(s.dec*rad)+Math.cos(f)*Math.cos(s.dec*rad)*Math.cos(H)>0}
+  const A={}, notes=[];
+  const add=(p,kind,w,text)=>{
+    if(OUTER.has(p)){notes.push(text);return}
+    const outer=[...OUTER].some(o=>text.includes(o));
+    if(outer){notes.push(text);return}
+    (A[p]??=[]).push({kind,w,text});
+  };
+  const ascSign=sg(natal.asc), lightSign=sg(natal.p[natal.light].lon), house=Y.age%12+1, nh=s=>(s-ascSign+12)%12+1;
+  const sra=sg(Y.asc), srh=l=>(sg(l)-sra+12)%12+1;
+  Y.pa=(ascSign+Y.age)%12;Y.ps=(lightSign+Y.age)%12;Y.house=house;Y.sra=sra;
+  Y.lords=[...new Set([RULER[Y.pa],RULER[Y.ps]])];
+
+  /* 1. Profections */
+  add(RULER[Y.pa],'prof',4,`Profection timelord by ascendant (${SIGNS[Y.pa]}, ${ord(house)} house year)`);
+  add(RULER[Y.ps],'prof',4,`Profection timelord by sect light (${SIGNS[Y.ps]}, ${ord(house)} sign from your ${natal.light})`);
+  const profSigns=[[Y.pa,'profected sign']];if(Y.ps!==Y.pa)profSigns.push([Y.ps,'profected sign from your sect light']);
+  Y.inProf=[];
+  for(const [s,label] of profSigns)for(const [n] of PLANETS){
+    if(sg(natal.p[n].lon)===s){add(n,'prof',2,`Natal ${n} sits in your ${label} (${SIGNS[s]})`);if(!OUTER.has(n))Y.inProf.push(`Natal ${pl(n)} in ${SIGNS[s]}`)}
+    if(sg(Y.p[n].lon)===s){add(n,'prof',2,`Solar return ${n} is in your ${label} (${SIGNS[s]}), a co-ruler of the year`);if(!OUTER.has(n))Y.inProf.push(`Solar return ${pl(n)} in ${SIGNS[s]}`)}
+  }
+  /* 2. Condition of the profection lord(s) in the solar return */
+  Y.cond=Y.lords.map(L=>{
+    const P=Y.p[L], h=srh(P.lon), q=QUAL(h);
+    const diurnal=L==='Mercury'?norm(P.lon-Y.p.Sun.lon)<0:DIURNAL[L], inSect=diurnal===Y.day;
+    const text=`Lord of the year in the solar return: SR ${ord(h)} house (${q}), your natal ${ord(nh(sg(P.lon)))}, ${P.rx?'retrograde':'direct'}, ${inSect?'in sect':'out of sect'}`;
+    add(L,'prof',q==='angular'?2:q==='succedent'?1:0.5,text);
+    return {L,h,q,rx:P.rx,inSect,lon:P.lon};
+  });
+  /* 3. Solar return rising sign */
+  add(RULER[sra],'sr',2,`Rules the solar return rising sign (${SIGNS[sra]}, your natal ${ord(nh(sra))} house)`);
+  if(sra===Y.pa)add(RULER[sra],'prof',3,'Solar return rising sign is the same as your profected sign');
+  for(const [n] of PLANETS){const h=srh(Y.p[n].lon);if([1,10].includes(h)||([4,7].includes(h)))add(n,'sr',1,`Angular in the solar return (SR ${ord(h)} house, your natal ${ord(nh(sg(Y.p[n].lon)))})`)}
+  /* 4. Solar return planets aspecting natal planets (3° orb) */
+  Y.aspects=[];
+  for(const [x] of PLANETS)for(const [z] of PLANETS){
+    if(x==='Sun'&&z==='Sun')continue;
+    const a=aspectOf(Y.p[x].lon,natal.p[z].lon);if(!a)continue;
+    const t=`Solar return ${x} ${a.name} your natal ${z} (${orbTxt(a.o)})`;
+    Y.aspects.push({x,z,...a,t});add(z,'sr',a.w,t);if(x!==z)add(x,'sr',a.w,t);
+  }
+  for(const [ang,l] of [['ASC',Y.asc],['MC',Y.mc]])for(const [z] of PLANETS){
+    const o=Math.abs(norm(l-natal.p[z].lon));if(o<=3)add(z,'sr',2,`Solar return ${ang} conjunct your natal ${z} (${orbTxt(o)})`)}
+  /* 5. Planetary returns (same sign as at birth) */
+  Y.returns=[];
+  for(const [n] of PLANETS){if(n==='Sun'||OUTER.has(n))continue;
+    if(sg(Y.p[n].lon)===sg(natal.p[n].lon)){Y.returns.push(n);add(n,'sr',1.5,`${n} return: solar return ${n} is back in its natal sign (${SIGNS[sg(natal.p[n].lon)]})`)}}
+  /* 6. Solar return Moon */
+  const mn=moonNext(start);
+  Y.moon={lon:Y.p.Moon.lon,h:srh(Y.p.Moon.lon),nh:nh(sg(Y.p.Moon.lon)),next:mn};
+  if(mn)add(mn.n,'sr',1,`Solar return Moon applies next by ${mn.name} to ${mn.n}${mn.sameSign?'':' (after the Moon changes sign)'}`);
+  if(sg(Y.p.Moon.lon)===Y.pa)add('Moon','prof',2,'Solar return Moon is in your profected sign');
+  /* 7. Lot of Fortune in the solar return */
+  const fo=n360(Y.day?Y.asc+Y.p.Moon.lon-Y.p.Sun.lon:Y.asc+Y.p.Sun.lon-Y.p.Moon.lon), fs=sg(fo);
+  Y.fortune={lon:fo,h:srh(fo),nh:nh(fs),conj:[]};
+  add(RULER[fs],'sr',1,`Rules the solar return Lot of Fortune (${SIGNS[fs]}, your natal ${ord(nh(fs))} house)`);
+  if(fs===Y.pa)add(RULER[Y.pa],'prof',2,'Solar return Lot of Fortune falls in your profected sign');
+  for(const [z] of PLANETS){const o=Math.abs(norm(fo-natal.p[z].lon));if(o<=3){Y.fortune.conj.push(z);add(z,'sr',2,`Solar return Lot of Fortune conjunct your natal ${z} (${orbTxt(o)})`)}}
+
+  /* 8. Bounds and decans */
+  Y.pd=Y.pa*30+n360(natal.asc)%30;
+  add(boundOf(Y.pd),'prof',2,`Bound lord of your profected rising degree (${zod(Y.pd)}, ${cardOf(Y.pd)})`);
+  add(decanOf(Y.pd),'prof',1,`Decan ruler of your profected rising degree (${cardOf(Y.pd)}, ${GD_TITLE[decanIdx(Y.pd)]})`);
+  add(boundOf(Y.asc),'sr',1.5,`Bound lord of the solar return rising degree (${zod(Y.asc)})`);
+  add(decanOf(Y.asc),'sr',1,`Decan ruler of the solar return rising degree (${cardOf(Y.asc)}, ${GD_TITLE[decanIdx(Y.asc)]})`);
+  add(boundOf(Y.p.Moon.lon),'sr',1,`Bound lord of the solar return Moon (${zod(Y.p.Moon.lon)})`);
+  for(const c of Y.cond)add(boundOf(c.lon),'prof',1,`The lord of the year, ${c.L}, sits in ${boundOf(c.lon)}’s bound in the solar return`);
+  Y.acts=A;Y.outerNotes=[...new Set(notes)];
+  Y.decs=decennials(start,end);
+  Y.days=Math.ceil((end-start)/DAY);
+  Y.pos=[];for(let i=0;i<=Y.days;i++)Y.pos.push(positions(new Date(start+i*DAY)));
+  Y.active=new Set([...Object.keys(A),...Y.decs.flatMap(d=>[d.l1,d.l2])].filter(n=>!OUTER.has(n)));
+  Y.focus=new Set(Object.entries(A).filter(([n])=>!OUTER.has(n)).filter(([,rs])=>rs.some(r=>r.kind==='prof')).map(([n])=>n));
+  return Y;
+}
+function decAt(ms){return yr.decs.find(d=>ms>=d.s&&ms<d.e)}
+function reasonsAt(n,ms){
+  const r=[...(yr.acts[n]||[])], d=decAt(ms);
+  if(d&&d.l2===n)r.push({kind:'dec',w:2,text:`Decennial sub-period lord (${fmt(d.s)} – ${fmt(d.e)})`});
+  if(d&&d.l1===n)r.push({kind:'dec',w:1,text:`Decennial major period lord (${fmtMY(d.s1)} – ${fmtMY(d.e1)})`});
+  return r;
+}
+const KIND={prof:'Profection lord',dec:'Decennial lord',sr:'Solar return'};
+const badges=rs=>[...new Set(rs.map(r=>r.kind))].filter(k=>KIND[k]).map(k=>`<span class="badge">${KIND[k]}</span>`).join('');
+
+/* Chart panels */
+const scoreOf=rs=>rs.reduce((a,r)=>a+r.w,0);
+const sortRs=rs=>[...rs].sort((a,b)=>(b.kind==='prof')-(a.kind==='prof')||b.w-a.w);
+function renderChart(){
+  if(!natal)return;
+  document.getElementById('chartSec').hidden=false;
+  const ascSign=sg(natal.asc), house=l=>(sg(l)-ascSign+12)%12+1, nh=s=>(s-ascSign+12)%12+1;
+  document.getElementById('placements').innerHTML=
+    `<span>ASC</span><span>${zod(natal.asc)}</span><span class="soft">1st</span>
+     <span>MC</span><span>${zod(natal.mc)}</span><span class="soft">${ord(house(natal.mc))}</span>`+
+    PLANETS.map(([n])=>`<span>${pl(n)}</span><span>${zod(natal.p[n].lon)}${natal.p[n].rx?' ℞':''}</span><span class="soft">${ord(house(natal.p[n].lon))}</span>`).join('');
+  const lordsEl=document.getElementById('lords'), srEl=document.getElementById('srBody'), actEl=document.getElementById('actBody');
+  if(!yr){lordsEl.innerHTML='<p class="lead soft">Pick a transit date after your birth to see this year’s timelords.</p>';srEl.innerHTML='';actEl.innerHTML='';return}
+  const d=decAt(transitMs())||yr.decs[0];
+  const subs=yr.decs.map(x=>`${pl(x.l2)} <span class="soft">${fmt(Math.max(x.s,yr.start))} – ${fmt(Math.min(x.e,yr.end))}</span>`).join('<br>');
+  const nhh=s=>(s-sg(natal.asc)+12)%12+1, L=RULER[yr.pa], Ls=RULER[yr.ps], cL=yr.cond.find(x=>x.L===L);
+  const hd=(n)=>nhh(sg(natal.p[n].lon));
+  const cond=c=>`${SR_POS[c.q]}${c.rx?', reworking something from before':''}${c.inSect?'':', and harder to steer than usual'}`;
+  const cS=yr.cond.find(x=>x.L===Ls);
+  const story=`<div class="story">
+    <p><strong>The chapter you’re in</strong> <span class="soft">${pl(d.l1)}, ${fmtMY(d.s1)} – ${fmtMY(d.e1)}, ${ttl(natal.p[d.l1].lon)}</span><br>
+      These years run on ${ROLE[d.l1]}, played out in your ${ord(hd(d.l1))} house: ${TOPIC[hd(d.l1)]}. ${sit(DOM[d.l1],natal.p[d.l1].lon)} ${how(natal.p[d.l1].lon)}
+      ${d.l2!==d.l1?`<br>Since ${fmtMY(d.s)}, ${the(d.l2)} has the floor, through your ${ord(hd(d.l2))} house (${SHORT[hd(d.l2)]}). ${sit(DOM[d.l2],natal.p[d.l2].lon)}`:''}</p>
+    <p><strong>This year</strong> <span class="soft">age ${yr.age}, ${ord(yr.house)} house year${L===d.l1||L===d.l2?'':', '+ttl(natal.p[L].lon)}</span><br>
+      The focus is ${TOPIC[yr.house]}. Use the year to ${HOUSE_DO[yr.house]}. ${cap(the(L))} is in charge, which brings in ${ROLE[L]}${hd(L)!==yr.house?` and your ${ord(hd(L))} house (${SHORT[hd(L)]})`:''}.
+      ${L===d.l1||L===d.l2?'It’s also the planet of the chapter you’re in, so the longer story comes to a head this year.':sit(DOM[L],natal.p[L].lon)}
+      This year it works through your ${ord(nhh(sg(cL.lon)))} house (${SHORT[nhh(sg(cL.lon))]}). <strong>Work with it:</strong> ${yearMove(cL)}. ${L===d.l1?'':how(natal.p[L].lon)}
+      ${Ls!==L?`<br>A second track runs through ${the(Ls)}, around ${TOPIC[nhh(yr.ps)]}: ${yearMove(cS)}.`:''}</p>
+    <p><strong>The fine print</strong> <span class="soft">${ttl(yr.pd)}, ${cardOf(yr.pd)}</span><br>
+      ${sit('the year',yr.pd)} ${how(yr.pd)}</p>
+    <p><strong>How it opens</strong> <span class="soft">${fmt(yr.start)}, ${ttl(yr.asc)}</span><br>
+      It starts around ${TOPIC[nhh(yr.sra)]}. ${sit('the first stretch',yr.asc)}</p></div>`;
+  lordsEl.innerHTML=story+`<details><summary>The astrology behind this</summary><p class="note">Solar return year ${fmt(yr.start)} – ${fmt(yr.end)}, age ${yr.age}, a ${ord(yr.house)} house year.</p>
+    <p class="lead">These planets are your profection timelords this year:</p>
+    <div class="lord"><span>Profected by ascendant</span><strong>${pl(RULER[yr.pa])}</strong><span class="soft">${SIGNS[yr.pa]}. Rising degree carried to ${zod(yr.pd)}: ${fineTxt(yr.pd)}</span></div>
+    <div class="lord"><span>Profected by sect light</span><strong>${pl(RULER[yr.ps])}</strong><span class="soft">${SIGNS[yr.ps]}, counted from your ${natal.light} (${natal.day?'day':'night'} chart)</span></div>
+    ${yr.inProf.length?`<div class="lord"><span>In the profected sign</span><span></span><span class="soft">${yr.inProf.join('<br>')}</span></div>`:''}
+    <div class="lord"><span>Decennial major period</span><strong>${pl(d.l1)}</strong><span class="soft">${fmtMY(d.s1)} – ${fmtMY(d.e1)}</span></div>
+    <div class="lord"><span>Decennial sub-periods this year</span><span></span><span class="soft">${subs}</span></div></details>`;
+  const m=yr.moon, f=yr.fortune;
+  const block=(title,html)=>`<div class="srb"><div class="srt">${title}</div><div>${html}</div></div>`;
+  const mo=m.lon;
+  srEl.innerHTML=`<p class="lead"><strong>Opening:</strong> ${sit('the first stretch of the year',yr.asc)} ${how(yr.asc)}</p>
+    <p class="lead"><strong>Your moods:</strong> they track ${TOPIC[m.nh]}. ${sit('your mood',mo)}</p>
+    ${(()=>{const top=yr.aspects.filter(a=>!OUTER.has(a.x)&&!OUTER.has(a.z)&&!(a.x===a.z)).sort((a,b)=>a.o-b.o).slice(0,3);return top.length?`<p class="lead"><strong>What gets touched:</strong> ${top.map(a=>contact(a.x,a.name,a.z,"In this year’s chart, ")).join(" ")}</p>`:""})()}
+    <p class="lead"><strong>Your luck:</strong> the cards you’re dealt this year come through ${TOPIC[f.nh]}${f.conj.length?`, landing right on your natal ${f.conj.join(' and ')}`:''}.${yr.returns.length?` ${yr.returns.join(' and ')} ${yr.returns.length>1?'are':'is'} back in the sign ${yr.returns.length>1?'they were':'it was'} in when you were born, so old patterns around ${yr.returns.map(n=>ROLE[n]).join(' and ')} come back up.`:''}</p>
+    <details><summary>The astrology behind this</summary><p class="note">Cast for ${esc(natal.placeName)}, ${fmtLocal(yr.start)} local time, ${yr.day?'day':'night'} chart.</p>`+
+    block('Rising sign',`${zod(yr.asc)}, in ${fineTxt(yr.asc)}. ${SIGNS[yr.sra]} is your natal ${ord(nh(yr.sra))} house, ruled by ${pl(RULER[yr.sra])}.${yr.sra===yr.pa?' Same sign as your profected sign.':''}`)+
+    block('Lord of the year',yr.cond.map(c=>`${pl(c.L)} at ${zod(c.lon)}, in ${fineTxt(c.lon)}. SR ${ord(c.h)} house (${c.q}), your natal ${ord(nh(sg(c.lon)))}, ${c.rx?'retrograde':'direct'}, ${c.inSect?'in sect':'out of sect'}.`).join('<br>'))+
+    block('In the profected sign',yr.inProf.length?yr.inProf.join('<br>'):'<span class="soft">No natal or solar return planets there.</span>')+
+    block('Solar return Moon',`${zod(m.lon)}, in ${fineTxt(m.lon)}. SR ${ord(m.h)} house, your natal ${ord(m.nh)}.${m.next?` Next applies by ${m.next.name} to ${pl(m.next.n)}${m.next.sameSign?'':', after changing sign'}.`:''}`)+
+    block('Lot of Fortune',`${zod(f.lon)}, SR ${ord(f.h)} house, your natal ${ord(f.nh)}, ruled by ${pl(RULER[sg(f.lon)])}.${f.conj.length?` Conjunct your natal ${f.conj.map(pl).join(', ')}.`:''}${sg(f.lon)===yr.pa?' Falls in your profected sign.':''}`)+
+    block('Returns',yr.returns.length?yr.returns.map(n=>`${pl(n)} back in ${SIGNS[sg(natal.p[n].lon)]}`).join('<br>'):'<span class="soft">No planets back in their natal signs.</span>')+
+    block('Aspects to your natal chart',yr.aspects.length?yr.aspects.sort((a,b)=>a.o-b.o).map(a=>`SR ${pl(a.x)} ${a.name} natal ${pl(a.z)} <span class="soft">${orbTxt(a.o)}</span>`).join('<br>'):'<span class="soft">None within 3°.</span>')+
+    `<details><summary>Solar return placements</summary><div class="tbl">
+      <span>ASC</span><span>${zod(yr.asc)}</span><span class="soft">natal ${ord(nh(yr.sra))}</span>
+      <span>MC</span><span>${zod(yr.mc)}</span><span class="soft">natal ${ord(nh(sg(yr.mc)))}</span>
+      ${PLANETS.map(([n])=>`<span>${pl(n)}</span><span>${zod(yr.p[n].lon)}${yr.p[n].rx?' ℞':''}</span><span class="soft">SR ${ord((sg(yr.p[n].lon)-yr.sra+12)%12+1)}, natal ${ord(nh(sg(yr.p[n].lon)))}</span>`).join('')}
+    </div></details></details>`;
+  const ranked=[...yr.active].map(n=>{const rs=sortRs(reasonsAt(n,transitMs()));return {n,rs,score:scoreOf(rs),focus:yr.focus.has(n)}})
+    .filter(x=>x.rs.length).sort((a,b)=>b.focus-a.focus||b.score-a.score);
+  actEl.innerHTML=ranked.map(x=>`<div class="act"><div>${pl(x.n)}${x.focus?'<div class="soft cnt">main focus</div>':''}</div>
+    <div>${cap(ROLE[x.n])}. ${OUTER.has(x.n)?'':sit(DOM[x.n],yr.p[x.n].lon)}<details><summary>${x.rs.length} ${x.rs.length===1?'reason':'reasons'}</summary><ul class="stack">${x.rs.map(r=>`<li${r.kind==='note'?' class="tiny"':''}>${r.text}</li>`).join('')}</ul></details></div></div>`).join('')+
+    (yr.outerNotes.length?`<p class="tiny">In the background: ${yr.outerNotes.slice(0,3).join('; ')}${yr.outerNotes.length>3?` and ${yr.outerNotes.length-3} more`:''}.</p>`:'');
+}
+
+/* Transits near a spot across the solar return year: 500 / 250 / 50 mile windows and exact dates */
+const R=3958.8, BANDS=[500,250,50];
+function hav(a1,o1,a2,o2){const dA=(a2-a1)*rad,dO=(o2-o1)*rad;
+  const h=Math.sin(dA/2)**2+Math.cos(a1*rad)*Math.cos(a2*rad)*Math.sin(dO/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
+function signedMiles(a,ra,dec,gst,lat,lon){
+  const l0=lonAt(a,ra,dec,gst,lat);if(l0===null)return null;
+  const dl=norm(l0-lon), sgn=dl<0?-1:1, rough=Math.abs(dl)*Math.cos(lat*rad)*69.17;
+  if(a==='MC'||a==='IC')return Math.abs(dl)>=90?sgn*rough:sgn*R*Math.asin(Math.cos(lat*rad)*Math.sin(Math.abs(dl)*rad));
+  if(rough>900)return sgn*rough;
+  let best=hav(lat,lon,lat,l0);
+  for(let la=Math.max(-84,lat-9);la<=Math.min(84,lat+9);la+=0.2){const l=lonAt(a,ra,dec,gst,la);if(l!==null)best=Math.min(best,hav(lat,lon,la,l))}
+  return sgn*best;
+}
+function passes(sp,only){
+  const from=yr.start, days=yr.days, t=i=>Math.min(from+i*DAY,yr.end), out=[];
+  for(const [n] of PLANETS){
+    if(n==='Moon'||(only&&!only.has(n)))continue;
+    for(const a of ANGLES){
+      const s=yr.pos.map(p=>signedMiles(a,p.p[n].ra,p.p[n].dec,natal.gst,sp.lat,sp.lon));
+      const open={}, iv={500:[],250:[],50:[]}, ex=[];
+      if(s[0]!=null)for(const T of BANDS)if(Math.abs(s[0])<T)open[T]={ms:t(0),o:true};
+      for(let i=0;i<days;i++){
+        const s0=s[i], s1=s[i+1];
+        if(s0==null||s1==null||Math.abs(s1-s0)>3000){
+          for(const T in open){iv[T].push([open[T].ms,t(i),open[T].o,false]);delete open[T]}
+          if(s1!=null)for(const T of BANDS)if(Math.abs(s1)<T)open[T]={ms:t(i+1),o:false};
+          continue}
+        if(s0===s1)continue;
+        const ev=[];
+        for(const T of BANDS)for(const v of [T,-T]){const f=(v-s0)/(s1-s0);if(f>0&&f<=1)ev.push([f,T])}
+        const z=-s0/(s1-s0);if(z>0&&z<=1)ev.push([z,0]);
+        ev.sort((x,y)=>x[0]-y[0]);
+        for(const [f,T] of ev){const ms=t(i)+f*DAY;
+          if(T===0){if(ms<=yr.end)ex.push(ms);continue}
+          if(open[T]){iv[T].push([open[T].ms,ms,open[T].o,false]);delete open[T]}else open[T]={ms,o:false}}
+      }
+      for(const T in open)iv[T].push([open[T].ms,yr.end,open[T].o,true]);
+      for(const P of iv[500]){
+        const inP=x=>x[1]>P[0]&&x[0]<P[1];
+        let min=Infinity;for(let i=0;i<=days;i++)if(t(i)>=P[0]&&t(i)<=P[1]&&s[i]!=null)min=Math.min(min,Math.abs(s[i]));
+        out.push({n,a,P,b250:iv[250].filter(inP),b50:iv[50].filter(inP),ex:ex.filter(x=>x>=P[0]&&x<=P[1]),min});
+      }
+    }
+  }
+  return out.sort((x,y)=>(x.ex[0]??x.P[0])-(y.ex[0]??y.P[0]));
+}
+function natalNear(sp,limit=500){
+  const out=[];
+  for(const [n] of PLANETS)for(const a of ANGLES){
+    const d=signedMiles(a,natal.p[n].ra,natal.p[n].dec,natal.gst,sp.lat,sp.lon);
+    if(d!==null&&Math.abs(d)<limit)out.push({n,a,d:Math.abs(d)});
+  }
+  return out.sort((x,y)=>x.d-y.d);
+}
+const rel=(ta,na)=>ta===na?'conjunct':OPP[ta]===na?'opposite':'square';
+const rangeTxt=list=>list.length?list.map(([a,b,so,eo])=>`${so?'… ':''}${fmt(a)} – ${fmt(b)}${eo?' …':''}`).join('<br>'):'—';
+let spotCache=null;
+
+function listCrossings(){
+  const ul=document.getElementById('cross'), note=document.getElementById('placeNote'), rl=document.getElementById('reloc');
+  if(!natal||!spot||!yr){ul.innerHTML='';rl.innerHTML='';return}
+  const ramc=n360(natal.gst+spot.lon), near=natalNear(spot);
+  rl.innerHTML=`<p class="reloc">Your chart relocated here: ASC ${zod(ascOf(ramc,spot.lat,natal.eps))}, MC ${zod(mcOf(ramc,natal.eps))}.</p>`+
+    (near.length?`<p class="reloc">Natal lines within 500 mi: ${near.map(x=>`${pl(x.n)} ${x.a} (${Math.round(x.d)} mi)`).join(', ')}.</p>`
+      :'<p class="reloc soft">None of your natal lines run within 500 miles of here.</p>')+
+    (()=>{const pn=natal.parans.filter(p=>Math.abs(p.lat-spot.lat)<=1);
+      return pn.length?`<p class="reloc">Natal parans within 1° of this latitude: ${pn.map(p=>`${pl(p.a[0])} ${p.a[1]} with ${pl(p.b[0])} ${p.b[1]} (${latTxt(p.lat)})`).join(', ')}.</p>`:''})();
+  const key=`${yr.start}|${spot.lat}|${spot.lon}`;
+  const render=()=>{
+    const only=document.getElementById('onlyAct').checked, mid=transitMs(), from=yr.start, to=yr.end;
+    const pct=x=>Math.max(0,Math.min(100,(x-from)/(to-from)*100));
+    const rows=spotCache.res.map(r=>({...r,rs:sortRs(reasonsAt(r.n,r.ex[0]??r.P[0]))})).filter(r=>!only||r.rs.length);
+    note.textContent=`${spot.name}, ${fmt(from)} – ${fmt(to)}.`;
+    ul.innerHTML=rows.length?rows.map(r=>{
+      const color=INFO[r.n].c;
+      const band=(list,p)=>list.map(([a,b])=>`<i style="left:${pct(a)}%;width:${pct(b)-pct(a)}%;background:color-mix(in srgb,${color} ${p}%,transparent)"></i>`).join('');
+      const hits=near.map(x=>`${cap(rel(r.a,x.a))} your natal ${pl(x.n)}`).join(', ');
+      const exShort=r.ex.length?`Strongest ${r.ex.map(fmt).join(', ')}`:`Comes within about ${Math.round(r.min)} mi`;
+      const exTxt=r.ex.length?'Exact '+r.ex.map(ms=>{const l=yr.pos[Math.round((ms-yr.start)/DAY)].p[r.n].lon;return `${fmt(ms)} <span class="soft">at ${zod(l)}, ${OUTER.has(r.n)?'':fineTxt(l)}</span>`}).join(', ')
+        :`Not exact this year, closest about ${Math.round(r.min)} mi`;
+      return `<li class="pass">
+        <div class="ph">Transiting ${pl(r.n)} on your ${r.a}</div>
+        <div class="what">${(()=>{const l=yr.pos[Math.round(((r.ex[0]??r.P[0])-yr.start)/DAY)].p[r.n].lon;
+          return OUTER.has(r.n)?`${r.n} on ${ANG_WORD[r.a]} here. ${cap(ANG_DO[r.n][r.a])}.`:`<span class="soft">${ttl(l)}</span><br>${sit(DOM[r.n],l)}<br><strong>Try:</strong> ${ANG_DO[r.n][r.a]}.<br>${how(l)}${near.filter(x=>!OUTER.has(x.n)).slice(0,2).map(x=>'<br>'+contact(r.n,rel(r.a,x.a),x.n,'Here, transiting ')).join('')}`})()}</div>
+        <div class="ex">${exShort}</div>
+        <div class="bar">${band([r.P],14)}${band(r.b250,32)}${band(r.b50,68)}${r.ex.map(x=>`<b style="left:${pct(x)}%"></b>`).join('')}${mid>from&&mid<to?`<u style="left:${pct(mid)}%" title="Transit date"></u>`:''}</div>
+        <div class="axis"><span>${fmt(from)}</span><span>${fmt(to)}</span></div>
+        <details><summary>The astrology behind this</summary>
+          <p>${exTxt}. Conjunct your relocated ${r.a}, opposite your ${OPP[r.a]}${hits?`. ${hits} here.`:'.'}</p>
+          ${r.rs.length?`<div class="badges">${badges(r.rs)}</div>`:''}
+          ${r.rs.length?`<ul class="stack">${r.rs.map(x=>`<li${x.kind==='note'?' class="tiny"':''}>${x.text}</li>`).join('')}</ul>`:''}
+          <dl class="rng"><dt>500 mi</dt><dd>${rangeTxt([r.P])}</dd><dt>250 mi</dt><dd>${rangeTxt(r.b250)}</dd><dt>50 mi</dt><dd>${rangeTxt(r.b50)}</dd></dl>
+        </details></li>`}).join('')
+      :`<li class="pass">${only?'No activated planets pass within 500 miles of here this solar return year.':'No transit lines come within 500 miles of here this solar return year.'}</li>`;
+  };
+  if(spotCache&&spotCache.key===key){render();return}
+  note.textContent=`${spot.name}: calculating…`;ul.innerHTML='';
+  setTimeout(()=>{spotCache={key,res:passes(spot)};render()},30);
+}
+function setSpot(lat,lon,name){
+  spot={lat,lon,name};
+  pinLayer.clearLayers();
+  if(place)L.circleMarker([place.latitude,place.longitude],{radius:5,color:'#3a3d45',fillColor:'#f4e2a1',fillOpacity:1,weight:1.5}).bindPopup('Birthplace').addTo(pinLayer);
+  L.circleMarker([lat,lon],{radius:7,color:'#3a3d45',fillColor:'#fff',fillOpacity:.9,weight:1.5}).addTo(pinLayer);
+  listCrossings();
+}
+map.on('click',e=>{if(!natal)return;const {lat,lng}=e.latlng;setSpot(lat,norm(lng),`${lat.toFixed(2)}°, ${norm(lng).toFixed(2)}°`)});
+
+/* Most transformative cities this solar return year */
+const CITIES=[
+['New York','USA',40.71,-74.01],['Los Angeles','USA',34.05,-118.24],['San Francisco','USA',37.77,-122.42],['San Diego','USA',32.72,-117.16],
+['Seattle','USA',47.61,-122.33],['Portland','USA',45.52,-122.68],['Chicago','USA',41.88,-87.63],['Miami','USA',25.76,-80.19],
+['Austin','USA',30.27,-97.74],['New Orleans','USA',29.95,-90.07],['Nashville','USA',36.16,-86.78],['Atlanta','USA',33.75,-84.39],
+['Boston','USA',42.36,-71.06],['Washington, DC','USA',38.91,-77.04],['Denver','USA',39.74,-104.99],['Sedona','USA',34.87,-111.76],
+['Santa Fe','USA',35.69,-105.94],['Las Vegas','USA',36.17,-115.14],['Honolulu','USA',21.31,-157.86],['Anchorage','USA',61.22,-149.90],
+['Toronto','Canada',43.65,-79.38],['Montreal','Canada',45.50,-73.57],['Vancouver','Canada',49.28,-123.12],
+['Mexico City','Mexico',19.43,-99.13],['Oaxaca','Mexico',17.07,-96.73],['Tulum','Mexico',20.21,-87.47],['Havana','Cuba',23.11,-82.37],
+['San Juan','Puerto Rico',18.47,-66.11],['Bogotá','Colombia',4.71,-74.07],['Medellín','Colombia',6.24,-75.58],['Lima','Peru',-12.05,-77.04],
+['Cusco','Peru',-13.53,-71.97],['Rio de Janeiro','Brazil',-22.91,-43.17],['São Paulo','Brazil',-23.55,-46.63],['Buenos Aires','Argentina',-34.60,-58.38],
+['Santiago','Chile',-33.45,-70.67],['London','UK',51.51,-0.13],['Edinburgh','UK',55.95,-3.19],['Dublin','Ireland',53.35,-6.26],
+['Paris','France',48.86,2.35],['Amsterdam','Netherlands',52.37,4.90],['Berlin','Germany',52.52,13.40],['Copenhagen','Denmark',55.68,12.57],
+['Stockholm','Sweden',59.33,18.07],['Oslo','Norway',59.91,10.75],['Helsinki','Finland',60.17,24.94],['Reykjavík','Iceland',64.15,-21.94],
+['Lisbon','Portugal',38.72,-9.14],['Madrid','Spain',40.42,-3.70],['Barcelona','Spain',41.39,2.17],['Seville','Spain',37.39,-5.98],
+['Rome','Italy',41.90,12.50],['Florence','Italy',43.77,11.26],['Milan','Italy',45.46,9.19],['Zurich','Switzerland',47.38,8.54],
+['Vienna','Austria',48.21,16.37],['Prague','Czechia',50.08,14.44],['Budapest','Hungary',47.50,19.04],['Athens','Greece',37.98,23.73],
+['Istanbul','Türkiye',41.01,28.98],['Tbilisi','Georgia',41.72,44.79],['Moscow','Russia',55.76,37.62],['Marrakech','Morocco',31.63,-7.99],
+['Cairo','Egypt',30.04,31.24],['Lagos','Nigeria',6.52,3.38],['Accra','Ghana',5.60,-0.19],['Nairobi','Kenya',-1.29,36.82],
+['Zanzibar','Tanzania',-6.16,39.20],['Cape Town','South Africa',-33.92,18.42],['Johannesburg','South Africa',-26.20,28.05],
+['Tel Aviv','Israel',32.09,34.78],['Dubai','UAE',25.20,55.27],['Doha','Qatar',25.29,51.53],['Mumbai','India',19.08,72.88],
+['Delhi','India',28.61,77.21],['Rishikesh','India',30.09,78.27],['Bengaluru','India',12.97,77.59],['Kathmandu','Nepal',27.72,85.32],
+['Colombo','Sri Lanka',6.93,79.86],['Bangkok','Thailand',13.76,100.50],['Chiang Mai','Thailand',18.79,98.98],['Hanoi','Vietnam',21.03,105.85],
+['Ho Chi Minh City','Vietnam',10.82,106.63],['Singapore','Singapore',1.35,103.82],['Kuala Lumpur','Malaysia',3.14,101.69],
+['Ubud, Bali','Indonesia',-8.51,115.26],['Manila','Philippines',14.60,120.98],['Hong Kong','China',22.32,114.17],['Shanghai','China',31.23,121.47],
+['Beijing','China',39.90,116.41],['Seoul','South Korea',37.57,126.98],['Tokyo','Japan',35.68,139.69],['Kyoto','Japan',35.01,135.77],
+['Taipei','Taiwan',25.03,121.57],['Sydney','Australia',-33.87,151.21],['Melbourne','Australia',-37.81,144.96],['Auckland','New Zealand',-36.85,174.76],
+['Queenstown','New Zealand',-45.03,168.66],['Suva','Fiji',-18.14,178.44]];
+function renderCities(){
+  const el=document.getElementById('cities'), note=document.getElementById('cityNote');
+  if(!yr){el.innerHTML='';note.textContent='Draw your map to see this.';return}
+  if(yr.cities){paintCities();return}
+  note.textContent='Calculating…';el.innerHTML='';
+  setTimeout(()=>{
+    let cand=new Set([...yr.focus].filter(n=>n!=='Moon'));if(!cand.size)cand=new Set([...yr.active].filter(n=>n!=='Moon'));const out=[];
+    for(const [name,country,lat,lon] of CITIES){
+      const sp={lat,lon}, near=natalNear(sp,250);
+      let best=null;
+      for(const r of passes(sp,cand)){
+        for(const ms of r.ex){
+          const rs=sortRs(reasonsAt(r.n,ms));if(!rs.length)continue;
+          const win=r.b50.find(b=>ms>=b[0]&&ms<=b[1])||r.b250.find(b=>ms>=b[0]&&ms<=b[1]);
+          const own=near.filter(x=>x.n===r.n), others=near.filter(x=>x.n!==r.n&&yr.active.has(x.n));
+          const score=rs.reduce((a,x)=>a+x.w,0)+(own.length?2:0)+others.length*0.5;
+          if(!best||score>best.score)best={name,country,lat,lon,r,ms,rs,win,own,others,near,score};
+        }
+      }
+      if(best)out.push(best);
+    }
+    out.sort((a,b)=>b.score-a.score||(b.win&&b.r.b50.includes(b.win)?1:0)-(a.win&&a.r.b50.includes(a.win)?1:0));
+    const seen={};yr.cities=[];
+    for(const c of out){const k=c.r.n+c.r.a;if((seen[k]=(seen[k]||0)+1)>2)continue;yr.cities.push(c);if(yr.cities.length===8)break}
+    paintCities();
+  },30);
+}
+function cityRead(c){
+  const n=c.r.n, nhh=s=>(s-sg(natal.asc)+12)%12+1, d=decAt(c.ms);
+  const isA=RULER[yr.pa]===n, isS=RULER[yr.ps]===n;
+  const who=isA?'the planet running your year':isS?'the planet running your year’s second track':'a planet sitting in this year’s sign';
+  const topic=isA||!isS?TOPIC[yr.house]:TOPIC[nhh(yr.ps)];
+  const tl=yr.pos[Math.round((c.ms-yr.start)/DAY)].p[n].lon;
+  const back=[];
+  if(d&&(d.l1===n||d.l2===n))back.push(`it’s also the planet of the longer chapter you’re in`);
+  if(c.rs.some(r=>r.kind==='sr'))back.push('your birthday chart points at it too');
+  if(c.own.length)back.push(`your birth map already runs a ${n} line near here`);
+  const hits=c.others.map(x=>contact(n,rel(c.r.a,x.a),x.n,'Here, transiting '));
+  return `<strong>${cap(the(n))}</strong>, ${who}, lands on ${ANG_WORD[c.r.a]} here, and this year that means ${topic}. `+
+    `${sit(DOM[n],tl)} <strong>Try:</strong> ${ANG_DO[n][c.r.a]}. ${how(tl)}`+
+    `${hits.length?` ${hits.slice(0,2).join(' ')}`:''}${back.length?` ${cap(back.slice(0,2).join(', and '))}.`:''}`;
+}
+function paintCities(){
+  const el=document.getElementById('cities'), note=document.getElementById('cityNote');
+  note.textContent=`Where this year’s main planets land, ${fmt(yr.start)} – ${fmt(yr.end)}. Most backed-up first.`;
+  el.innerHTML=yr.cities.length?yr.cities.map((c,i)=>{
+    const when=c.win?`${fmt(c.win[0])} – ${fmt(c.win[1])}`:fmt(c.ms);
+    const tl=yr.pos[Math.round((c.ms-yr.start)/DAY)].p[c.r.n].lon;
+    const lines=[`Transiting ${pl(c.r.n)} exact on your relocated ${c.r.a} here on ${fmt(c.ms)}, at ${zod(tl)}, in ${fineTxt(tl)}`,...c.rs.map(x=>x.text),
+      ...c.own.map(x=>`Your natal ${c.r.n} ${x.a} line also runs ${Math.round(x.d)} mi from here`),
+      ...c.others.map(x=>`Transiting ${c.r.n} is ${rel(c.r.a,x.a)} your natal ${x.n} here (natal ${x.n} ${x.a} line ${Math.round(x.d)} mi away)`)];
+    const read=cityRead(c);
+    return `<li class="citycard"><div class="ctop"><div><div class="cname">${esc(c.name)} <span class="soft">${esc(c.country)}</span></div>
+      <div class="when">${when}</div></div>
+      <button type="button" class="mini" data-i="${i}">Show on map</button></div>
+      <p class="read">${read}</p><p class="tiny">Peak: ${fmt(c.ms)}</p>
+      <details><summary>Why, ${lines.length} reasons</summary><ul class="stack">${lines.map(l=>`<li>${l}</li>`).join('')}</ul></details></li>`}).join('')
+    :'<li class="citycard">None of the cities on the list get a transit from an activated planet this year.</li>';
+}
+document.getElementById('cities').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-i]');if(!b)return;const c=yr.cities[+b.dataset.i];
+  map.flyTo([c.lat,c.lon],4);setSpot(c.lat,c.lon,`${c.name}, ${c.country}`);
+  document.getElementById('map').scrollIntoView({behavior:'smooth',block:'center'});
+});
+
+/* Planet toggles */
+const box=document.getElementById('planets');
+for(const [n,color,g] of PLANETS){
+  const l=document.createElement('label');
+  l.innerHTML=`<input type="checkbox" checked><span class="g" style="color:${color}">${g}${VS}</span>${n}`;
+  l.querySelector('input').addEventListener('change',e=>{on[n]=e.target.checked;draw()});
+  box.appendChild(l);
+}
+document.getElementById('showN').addEventListener('change',draw);
+document.getElementById('showT').addEventListener('change',draw);
+document.getElementById('showP').addEventListener('change',draw);
+const pf=document.getElementById('pf');
+for(const [n] of PLANETS)pf.add(new Option(n,n));
+pf.addEventListener('change',draw);
+
+/* Transit date */
+const td=document.getElementById('td');
+const iso=dt=>dt.toISOString().slice(0,10);
+const todayISO=()=>{const n=new Date();return iso(new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())))};
+const transitMs=()=>{const [y,m,d]=td.value.split('-').map(Number);return Date.UTC(y,m-1,d,12)};
+function updateTransit(){
+  if(!td.value)td.value=todayISO();
+  const ms=transitMs();
+  transit=positions(new Date(ms));
+  if(!yr||ms<yr.start||ms>=yr.end){yr=buildYear(ms);spotCache=null}
+  renderChart();draw();listCrossings();renderCities();
+}
+document.getElementById('onlyAct').addEventListener('change',listCrossings);
+td.value=todayISO();
+td.addEventListener('change',()=>{if(natal)updateTransit()});
+const shift=k=>{td.value=iso(new Date(transitMs()+k*DAY));if(natal)updateTransit()};
+document.getElementById('prev').onclick=()=>shift(-1);
+document.getElementById('next').onclick=()=>shift(1);
+document.getElementById('today').onclick=()=>{td.value=todayISO();if(natal)updateTransit()};
+
+/* Birthplace search (Open-Meteo, no key) */
+const c=document.getElementById('c'), list=document.getElementById('results'), picked=document.getElementById('picked');
+let timer, found=[];
+c.addEventListener('input',()=>{place=null;picked.textContent='';clearTimeout(timer);
+  const q=c.value.trim();if(q.length<2){list.innerHTML='';return}
+  timer=setTimeout(async()=>{
+    try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&format=json`);
+      found=(await r.json()).results||[];
+      list.innerHTML=found.length?found.map((p,i)=>`<li role="option" tabindex="0" data-i="${i}">${esc(p.name)} <small>${esc([p.admin1,p.country].filter(Boolean).join(', '))}</small></li>`).join('')
+        :'<li>No places found. Try another spelling.</li>';
+      c.setAttribute('aria-expanded','true')}
+    catch{list.innerHTML='<li>Place search is unavailable right now.</li>'}},300)});
+function choose(i){const p=found[i];if(!p)return;place=p;
+  c.value=[p.name,p.admin1,p.country].filter(Boolean).join(', ');list.innerHTML='';c.setAttribute('aria-expanded','false');
+  picked.textContent=`Time zone: ${p.timezone}`}
+list.addEventListener('click',e=>{const li=e.target.closest('li[data-i]');if(li)choose(+li.dataset.i)});
+list.addEventListener('keydown',e=>{if(e.key==='Enter'){const li=e.target.closest('li[data-i]');if(li){e.preventDefault();choose(+li.dataset.i)}}});
+
+/* Local birth time -> UTC with that place's historical time zone rules */
+function tzOffsetMs(ms,tz){
+  const q=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})
+    .formatToParts(new Date(ms)).map(x=>[x.type,x.value]));
+  return Date.UTC(+q.year,q.month-1,+q.day,+q.hour,+q.minute,+q.second)-ms;
+}
+function localToUTC(y,m,d,hh,mm,tz){const wall=Date.UTC(y,m-1,d,hh,mm);let u=wall-tzOffsetMs(wall,tz);u=wall-tzOffsetMs(u,tz);return new Date(u)}
+
+const d=document.getElementById('d'), tm=document.getElementById('t'), err=document.getElementById('err');
+document.getElementById('f').addEventListener('submit',e=>{
+  e.preventDefault();err.textContent='';
+  if(!d.value||!tm.value){err.textContent='Enter your birth date and time.';return}
+  if(!place){err.textContent='Pick your birthplace from the list.';return}
+  const [y,m,day]=d.value.split('-').map(Number),[hh,mm]=tm.value.split(':').map(Number);
+  try{
+    const utc=localToUTC(y,m,day,hh,mm,place.timezone);
+    natal=positions(utc);
+    const later=positions(new Date(utc.getTime()+6*3600e3));
+    for(const [n] of PLANETS)natal.p[n].rx=norm(later.p[n].lon-natal.p[n].lon)<0;
+    const ramc=n360(natal.gst+place.longitude), sun=natal.p.Sun;
+    natal.asc=ascOf(ramc,place.latitude,natal.eps);
+    natal.mc=mcOf(ramc,natal.eps);
+    const H=(ramc-sun.ra)*rad, f=place.latitude*rad;
+    natal.day=Math.sin(f)*Math.sin(sun.dec*rad)+Math.cos(f)*Math.cos(sun.dec*rad)*Math.cos(H)>0;
+    natal.light=natal.day?'Sun':'Moon';
+    natal.birth={y,m,d:day};natal.utcMs=utc.getTime();natal.tz=place.timezone;natal.placeName=place.name;
+    const L0=natal.p[natal.light].lon;natal.decOrder=TRAD.slice().sort((a,b)=>n360(natal.p[a].lon-L0)-n360(natal.p[b].lon-L0));
+    yr=null;spotCache=null;
+    natal.parans=computeParans();
+    updateTransit();
+    setSpot(place.latitude,place.longitude,'Your birthplace');
+  }catch(x){err.textContent='Could not calculate positions. Check the date and try again.'}
+});
+
+/* Ask the astrology guide (served by netlify/functions/ask.mjs) */
+function chartContext(){
+  if(!natal)return '';
+  const nh=s=>(s-sg(natal.asc)+12)%12+1, P=l=>`${zod(l)}, ${ord(nh(sg(l)))} house, decan ${deco(l).t} (${cardOf(l)}, ruled by ${decanOf(l)}), ${boundOf(l)}'s bound`;
+  const lines=[`Birthplace: ${natal.placeName}. ${natal.day?'Day':'Night'} chart. Sect light: ${natal.light}.`,
+    `Natal ASC ${P(natal.asc)}. MC ${zod(natal.mc)} (${ord(nh(sg(natal.mc)))} house).`,
+    ...PLANETS.map(([n])=>`Natal ${n}: ${P(natal.p[n].lon)}${natal.p[n].rx?', retrograde':''}.`)];
+  if(yr){
+    const d=decAt(transitMs())||yr.decs[0];
+    lines.push(`Selected date: ${td.value}. Solar return year ${fmt(yr.start)} to ${fmt(yr.end)}, age ${yr.age}.`,
+      `Profection: ${SIGNS[yr.pa]} (${ord(yr.house)} house year), lord ${RULER[yr.pa]}. From the sect light: ${SIGNS[yr.ps]}, lord ${RULER[yr.ps]}.`,
+      `Profected rising degree ${P(yr.pd)}.`,
+      `Decennials: major period ${d.l1} (${fmtMY(d.s1)} to ${fmtMY(d.e1)}); sub-periods this year: ${yr.decs.map(x=>`${x.l2} ${fmt(x.s)} to ${fmt(x.e)}`).join('; ')}.`,
+      `Solar return (cast for birthplace): ASC ${P(yr.asc)}; Moon ${P(yr.p.Moon.lon)}; Lot of Fortune ${zod(yr.fortune.lon)} (natal ${ord(yr.fortune.nh)} house).`,
+      ...yr.cond.map(c=>`Lord of the year ${c.L} in the solar return: SR ${ord(c.h)} house (${c.q}), natal ${ord(nh(sg(c.lon)))}, ${c.rx?'retrograde':'direct'}, ${c.inSect?'in sect':'out of sect'}.`),
+      `Solar return contacts to natal: ${yr.aspects.filter(a=>!OUTER.has(a.x)&&!OUTER.has(a.z)).map(a=>`SR ${a.x} ${a.name} natal ${a.z} (${orbTxt(a.o)})`).join('; ')||'none within 3°'}.`,
+      `Activated planets and reasons: ${[...yr.active].map(n=>`${n}: ${reasonsAt(n,transitMs()).map(r=>r.text).join('; ')}`).join(' | ')}.`);
+    if(spot&&spotCache)lines.push(`Place selected on the map: ${spot.name}. Transit lines within 500 miles this year: ${spotCache.res.slice(0,12).map(r=>`${r.n} on ${r.a}${r.ex.length?' exact '+r.ex.map(fmt).join(', '):''}`).join('; ')}.`);
+    if(yr.cities)lines.push(`Top places this year: ${yr.cities.map(c=>`${c.name} (${c.r.n} on ${c.r.a}, ${fmt(c.ms)})`).join('; ')}.`);
+  }
+  return lines.join('\n');
+}
+const chatLog=[];
+function addMsg(role,text){
+  const el=document.createElement('div');el.className='msg '+role;el.textContent=text;
+  document.getElementById('chatLog').appendChild(el);el.scrollIntoView({block:'nearest'});return el;
+}
+document.getElementById('chatForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const box=document.getElementById('chatInput'), q=box.value.trim();if(!q)return;
+  box.value='';addMsg('user',q);chatLog.push({role:'user',content:q});
+  const wait=addMsg('assistant','Thinking…');
+  try{
+    const text=await askClaude(chatLog.slice(-12),chartContext());
+    wait.textContent=text;chatLog.push({role:'assistant',content:text});
+  }catch(err){wait.textContent=err.message||'The guide isn’t available right now.';wait.classList.add('err');chatLog.pop()}
+});
+
+/* The guide's instructions live in the page, so it works from this single file */
+const GUIDE_STYLE=`You are the astrology guide on "Where your chart lands," an astrocartography site.
+Method: tropical zodiac, whole sign houses, traditional (Hellenistic) astrology. The seven traditional planets lead;
+mention Uranus, Neptune and Pluto only briefly if at all. Timing comes from decennials (Valens), annual profections
+from the ascendant and from the sect light, the solar return cast for the birthplace, and transits read as
+cyclocartography (a transiting planet on an angle of the natal chart relocated to a place). Every planet is read
+through its decan (Chaldean faces, with Golden Dawn tarot cards) as the storyline and its Egyptian bound as the
+tools or method it works with. Houses say where in life something happens. Aspects: conjunction blends,
+sextile is an opening that needs a first step, square is friction that asks for action, trine is easy support,
+opposition is a tug-of-war to balance.
+
+Voice: plain, everyday language. Practical: tell people what they can actually do. Short answers, usually 3 to 6
+sentences. No jargon unless the person uses it first, and explain any term you use in a few words. Never write
+"there is an energy of" or "there is a tension with". Not cinematic, not dramatic, no fortune-telling certainty:
+talk in tendencies and choices. Do not give medical, legal or financial instructions; suggest a professional for
+those. If the chart data needed is missing, say what's missing (for example, birth time) instead of guessing.
+Use only the chart data provided below for chart specifics; do not invent placements.`;
+const KEY_SLOT='claude-key';
+const getKey=()=>{try{return localStorage.getItem(KEY_SLOT)||''}catch{return ''}};
+function keyStatus(){const k=getKey();document.getElementById('keyNote').textContent=k?`Connected (key ending ${k.slice(-4)}).`:'Not connected yet.';document.getElementById('keyBox').open=!k}
+document.getElementById('keySave').onclick=()=>{const v=document.getElementById('keyInput').value.trim();if(!v)return;try{localStorage.setItem(KEY_SLOT,v)}catch{}document.getElementById('keyInput').value='';keyStatus()};
+document.getElementById('keyForget').onclick=()=>{try{localStorage.removeItem(KEY_SLOT)}catch{}keyStatus()};
+keyStatus();
+async function askClaude(messages,context){
+  const key=getKey();
+  if(key){
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+      'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:700,
+        system:`${GUIDE_STYLE}\n\nChart data for this visitor:\n${context||'(No chart drawn yet. Answer general astrology questions only.)'}`,messages})});
+    const data=await r.json().catch(()=>({}));
+    if(r.status===401)throw new Error('That API key didn’t work. Check it under “Connect Claude.”');
+    if(!r.ok)throw new Error(data?.error?.message||'The guide couldn’t answer right now. Try again in a minute.');
+    return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+  }
+  // No key in this browser: use the site's server function if one is set up
+  const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages,context})}).catch(()=>null);
+  const data=r?await r.json().catch(()=>({})):{};
+  if(!r||!r.ok||!data.text)throw new Error('Connect Claude above to start asking questions.');
+  return data.text;
+}
+</script>
+</body>
+</html>
