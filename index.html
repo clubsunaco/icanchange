@@ -1145,8 +1145,13 @@ function keyStatus(){const k=getKey();document.getElementById('keyNote').textCon
 document.getElementById('keySave').onclick=()=>{const v=document.getElementById('keyInput').value.trim();if(!v)return;try{localStorage.setItem(KEY_SLOT,v)}catch{}document.getElementById('keyInput').value='';keyStatus()};
 document.getElementById('keyForget').onclick=()=>{try{localStorage.removeItem(KEY_SLOT)}catch{}keyStatus()};
 keyStatus();
+/* If the site's server function is running, everyone can ask without a key, so hide the setup box */
+let serverReady=false;
+fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:'{}'})
+  .then(r=>{if(r.status===400){serverReady=true;document.getElementById('keyBox').hidden=true}})
+  .catch(()=>{});
 async function askClaude(messages,context){
-  const key=getKey();
+  const key=serverReady?'':getKey();
   if(key){
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
       'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
